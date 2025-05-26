@@ -1,0 +1,21 @@
+.sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 0.375rem;
+}
+
+.sidebar-dropdown .dropdown-toggle {
+    color: white !important; 
+    display: flex;
+    align-items: center;
+}
+.sidebar-dropdown .dropdown-menu {
+    background-color: #3b5fcf; 
+}
+.sidebar-dropdown .dropdown-item {
+    color: rgba(255, 255, 255, 0.8); 
+}
+.sidebar-dropdown .dropdown-item:hover,
+.sidebar-dropdown .dropdown-item.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
