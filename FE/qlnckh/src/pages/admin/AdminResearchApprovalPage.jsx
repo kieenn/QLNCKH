@@ -3,7 +3,7 @@ import usePagination from '../../hooks/usePagination';
 import {
     Container, Card, Table, Button, Spinner, Alert, Pagination, Row, Col, InputGroup, FormControl, Badge, Modal, Form, ButtonGroup
 } from 'react-bootstrap';
-import { FaEye, FaEdit, FaFilter, FaTasks } from 'react-icons/fa';
+import { FaEye, FaEdit, FaFilter, FaTasks, FaSyncAlt } from 'react-icons/fa';
 import { getPendingProposalsForAdmin, submitAdminReview, getAllVaiTro } from '../../api/adminApi';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -329,7 +329,12 @@ const AdminResearchApprovalPage = () => {
             </Card>
             <Card className="shadow mb-4 border-0">
                 <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center">
-                    <h6 className="m-0 fw-bold"><FaTasks className="me-2"/>Danh sách đề tài chờ duyệt</h6>
+                    <div className="d-flex align-items-center">
+                        <h6 className="m-0 fw-bold"><FaTasks className="me-2"/>Danh sách đề tài chờ duyệt</h6>
+                        <Button variant="link" size="sm" onClick={() => refetchProposals()} disabled={isLoading} className="ms-2 p-0" title="Tải lại danh sách">
+                            <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
+                        </Button>
+                    </div>
                     {paginationData && <small className="text-muted">Hiển thị {paginationData.from}-{paginationData.to} / {paginationData.total}</small>}
                 </Card.Header>
                 <Card.Body className="p-0">

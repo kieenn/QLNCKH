@@ -5,7 +5,7 @@ import {
     Container, Card, Table, Button, Spinner, Alert, Pagination, Row, Col, InputGroup, FormControl,
     Modal, Badge, Form, ButtonGroup, ListGroup // Thêm ButtonGroup
 } from 'react-bootstrap';
-import { FaEye, FaEdit, FaSearch, FaFilter, FaTasks } from 'react-icons/fa';
+import { FaEye, FaEdit, FaSearch, FaFilter, FaTasks, FaSyncAlt } from 'react-icons/fa';
 import {
     getResearchProgressList, getAllLinhVuc, getAllTrangThaiDeTai, getAllTienDoMilestones, updateResearchProgress, getDonViList
 } from '../../api/adminApi';
@@ -417,7 +417,12 @@ const ManageResearchProgressPage = () => {
 
             <Card className="shadow mb-4 border-0">
                 <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center">
-                    <h6 className="m-0 fw-bold"><FaTasks className="me-2"/>Danh sách đề tài và tiến độ</h6>
+                    <div className="d-flex align-items-center">
+                        <h6 className="m-0 fw-bold"><FaTasks className="me-2"/>Danh sách đề tài và tiến độ</h6>
+                        <Button variant="link" size="sm" onClick={() => refetchProjects()} disabled={isLoading} className="ms-2 p-0" title="Tải lại danh sách">
+                            <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
+                        </Button>
+                    </div>
                     {paginationData && <small className="text-muted">Hiển thị {paginationData.from}-{paginationData.to} trên tổng số {paginationData.total} đề tài</small>}
                 </Card.Header>
                 <Card.Body className="p-0">

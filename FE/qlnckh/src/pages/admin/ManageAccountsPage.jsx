@@ -5,7 +5,7 @@ import {
     Container, Card, Table, Button, Spinner, Alert, Pagination, Row, Col, InputGroup, FormControl, // Thêm InputGroup, FormControl
     Modal, Badge, ButtonGroup, Form, ListGroup, Tooltip, OverlayTrigger, FormSelect
 } from 'react-bootstrap'; // Import các component cần thiết, thêm FormSelect
-import { FaPlus, FaEdit, FaTrash, FaUserShield, FaSearch } from 'react-icons/fa'; // Thêm icons cho đẹp (cần cài react-icons)
+import { FaPlus, FaEdit, FaTrash, FaUserShield, FaSearch, FaSyncAlt } from 'react-icons/fa'; // Thêm icons cho đẹp (cần cài react-icons)
 import apiClient, { fetchCsrfToken } from '../../api/axiosConfig'; // Import API client
 import { useAuth } from '../../hooks/useAuth'; // Import hook xác thực
 
@@ -1016,10 +1016,16 @@ const ManageAccountsPage = () => {
             </Card>
 
             <Card className="shadow mb-4 border-0">
-                <Card.Header className="py-3 bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h6 className="m-0 fw-bold">Danh sách người dùng</h6>
+                <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center"> {/* Thay đổi bg-primary text-white thành bg-light text-primary */}
+                    <div className="d-flex align-items-center">
+                        <h6 className="m-0 fw-bold">Danh sách người dùng</h6>
+                        {/* Nút Tải lại */}
+                        <Button variant="link" size="sm" onClick={() => refetchUsers()} disabled={isLoadingUsers} className="ms-2 p-0" title="Tải lại danh sách">
+                            <FaSyncAlt className={isLoadingUsers ? 'fa-spin' : ''} />
+                        </Button>
+                    </div>
                     {/* Nút thêm tài khoản */}
-                    <Button variant="light" size="sm" onClick={handleAddUserClick}>
+                    <Button variant="primary" size="sm" onClick={handleAddUserClick}> {/* Thay đổi variant="light" thành variant="primary" */}
                         <FaPlus className="me-1" /> Thêm tài khoản
                     </Button>
                 </Card.Header>

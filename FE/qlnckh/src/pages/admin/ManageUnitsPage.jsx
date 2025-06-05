@@ -4,6 +4,7 @@ import {
     Modal, Form, Tooltip, OverlayTrigger, ButtonGroup, FormSelect
 } from 'react-bootstrap';
 import { FaPlus, FaEdit, FaTrash, FaSearch, FaSitemap } from 'react-icons/fa'; // Thêm FaSitemap nếu muốn
+import { FaSyncAlt } from 'react-icons/fa'; // Import FaSyncAlt
 import apiClient from '../../api/axiosConfig'; // Import API client đã cấu hình
 // Import các hàm API cần thiết, bao gồm cả hàm lấy đơn vị phân trang
 import { getAllUnits, getUnitsPaginated, createUnit, updateUnit, deleteUnit } from '../../api/adminApi';
@@ -404,8 +405,13 @@ const ManageUnitsPage = () => {
 
             {/* Bảng dữ liệu */}
             <Card className="shadow mb-4 border-0">
-                <Card.Header className="py-3 bg-light d-flex justify-content-between align-items-center">
-                    <h6 className="m-0 fw-bold text-primary">Danh sách Đơn vị</h6>
+                <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center"> {/* Thêm text-primary */}
+                    <div className="d-flex align-items-center">
+                        <h6 className="m-0 fw-bold">Danh sách Đơn vị</h6>
+                        <Button variant="link" size="sm" onClick={() => refetchUnits()} disabled={isLoading} className="ms-2 p-0" title="Tải lại danh sách">
+                            <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
+                        </Button>
+                    </div>
                     <Button variant="primary" size="sm" onClick={handleAddClick}>
                         <FaPlus className="me-1" /> Thêm Đơn vị
                     </Button>

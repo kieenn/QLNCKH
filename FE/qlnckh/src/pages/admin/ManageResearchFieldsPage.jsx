@@ -4,6 +4,7 @@ import {
     Modal, Form, Tooltip, OverlayTrigger, ButtonGroup
 } from 'react-bootstrap';
 import { FaPlus, FaEdit, FaTrash, FaSearch, FaTags } from 'react-icons/fa'; // Icon cho Lĩnh vực
+import { FaSyncAlt } from 'react-icons/fa'; // Import FaSyncAlt
 import apiClient from '../../api/axiosConfig'; // Import API client
 // Import các hàm API cho Lĩnh vực nghiên cứu
 import { getResearchFieldsPaginated, createResearchField, updateResearchField, deleteResearchField } from '../../api/adminApi';
@@ -282,7 +283,13 @@ const ManageResearchFieldsPage = () => {
 
             {/* Bảng dữ liệu */}
             <Card className="shadow mb-4 border-0">
-                <Card.Header className="py-3 bg-light d-flex justify-content-between align-items-center">
+                <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center"> {/* Thêm text-primary */}
+                    <div className="d-flex align-items-center">
+                        <h6 className="m-0 fw-bold">Danh sách Lĩnh vực nghiên cứu</h6>
+                        <Button variant="link" size="sm" onClick={() => refetchFields()} disabled={isLoading} className="ms-2 p-0" title="Tải lại danh sách">
+                            <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
+                        </Button>
+                    </div>
                     <h6 className="m-0 fw-bold text-primary">Danh sách Lĩnh vực nghiên cứu</h6>
                     <Button variant="primary" size="sm" onClick={handleAddClick}>
                         <FaPlus className="me-1" /> Thêm Lĩnh vực

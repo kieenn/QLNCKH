@@ -105,6 +105,12 @@ Route::middleware('web')->group(function () {
         Route::post('/admin/articles/{baiBao}/approve',[AdminController::class, 'approveBaiBao']);
         Route::post('/admin/articles/{baiBao}/reject',[AdminController::class, 'rejectBaiBao']);
 
+        Route::get('/admin/dashboard-stats', [AdminController::class, 'getDashboardStats']);
+
+        Route::get('/notifications', [App\Http\Controllers\LecturerController::class, 'getLecturerNotifications']);
+    Route::patch('/notifications/{notification_id}/read', [App\Http\Controllers\LecturerController::class, 'markNotificationAsRead']);
+    Route::patch('/notifications/mark-all-as-read', [App\Http\Controllers\LecturerController::class, 'markAllNotificationsAsRead']);
+
     });
 });
 Route::post('/forgot-password', [AuthController::class, 'sendResetOtp']);

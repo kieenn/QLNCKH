@@ -33,6 +33,10 @@ import RegisterOrEditResearchPage from '../pages/lecturer/RegisterOrEditResearch
 import AdminResearchApprovalPage from '../pages/admin/AdminResearchApprovalPage';
 import DeclareArticlePage from '../pages/lecturer/DeclareArticlePage';
 import ApproveArticlesPage from '../pages/admin/ApproveArticlesPage.jsx';
+// Import các trang thông báo cho giảng viên
+import AllNotificationsPage from '../pages/lecturer/AllNotificationsPage';
+import LecturerNotificationDetailPage from '../pages/lecturer/LecturerNotificationDetailPage';
+
 
 // --- Định nghĩa mã quyền (phải khớp với DB và backend) ---
 const MANAGE_ACCOUNTS = 'Quản Lý Tài Khoản';
@@ -129,6 +133,9 @@ const AppRouter = () => {
                     <Route path="researches/register" element={<RegisterOrEditResearchPage />} />
                     <Route path="researches/edit/:maDeTaiForEdit" element={<RegisterOrEditResearchPage />} />
                      <Route path="researches/:researchId/articles/declare" element={<DeclareArticlePage />} />
+                    {/* Routes cho thông báo của giảng viên */}
+                    <Route path="notifications" element={<AllNotificationsPage />} />
+                    <Route path="notifications/:notificationId" element={<LecturerNotificationDetailPage />} />
                 </Route>
             </Route>
 

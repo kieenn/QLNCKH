@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Container, Card, Table, Button, Spinner, Alert, Row, Col, InputGroup, FormControl, Pagination,
     Modal, Form, Tooltip, OverlayTrigger, ButtonGroup, FormSelect
-} from 'react-bootstrap';
+} from 'react-bootstrap'; // Thêm lại Pagination
 import { FaPlus, FaEdit, FaTrash, FaSearch, FaLayerGroup } from 'react-icons/fa'; // Icon cho Cấp nhiệm vụ
 import apiClient from '../../api/axiosConfig'; // Import API client đã cấu hình
 // Import các hàm API cho Cấp nhiệm vụ
 import { getAllTaskLevels, getTaskLevelsPaginated, createTaskLevel, updateTaskLevel, deleteTaskLevel } from '../../api/adminApi';
 import usePagination from '../../hooks/usePagination'; // Import hook pagination
-
+import { FaSyncAlt } from 'react-icons/fa'; // Import FaSyncAlt
 // --- Component Modal Thêm/Sửa Cấp nhiệm vụ ---
 const TaskLevelFormModal = ({ show, onHide, onSave, taskLevel, allTaskLevelsForParentSelect = [], isEditing = false }) => {
     // Thêm kinh_phi vào state
@@ -414,7 +414,13 @@ const ManageTaskLevelsPage = () => {
 
             {/* Bảng dữ liệu */}
             <Card className="shadow mb-4 border-0">
-                <Card.Header className="py-3 bg-light d-flex justify-content-between align-items-center">
+                <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center"> {/* Thêm text-primary */}
+                    <div className="d-flex align-items-center">
+                        <h6 className="m-0 fw-bold">Danh sách Cấp nhiệm vụ</h6>
+                        <Button variant="link" size="sm" onClick={() => refetchTaskLevels()} disabled={isLoading} className="ms-2 p-0" title="Tải lại danh sách">
+                            <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
+                        </Button>
+                    </div>
                     <h6 className="m-0 fw-bold text-primary">Danh sách Cấp nhiệm vụ</h6>
                     <Button variant="primary" size="sm" onClick={handleAddClick}>
                         <FaPlus className="me-1" /> Thêm Cấp nhiệm vụ

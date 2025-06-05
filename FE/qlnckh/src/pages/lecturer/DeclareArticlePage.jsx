@@ -32,6 +32,7 @@ const DeclareArticlePage = () => {
     ]); // State cho các mục nhập file, khởi tạo với 1 mục
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const [submissionSucceeded, setSubmissionSucceeded] = useState(false); // State mới để trigger reset form
 
     useEffect(() => {
         const fetchResearchTitle = async () => {
@@ -55,6 +56,18 @@ const DeclareArticlePage = () => {
             fetchResearchTitle();
         }
     }, [researchId]);
+
+    // useEffect để reset form sau khi submissionSucceeded là true
+    useEffect(() => {
+        if (submissionSucceeded) {
+            setFormData({
+                ten_bai_bao: '', ngay_xuat_ban: '', mo_ta_bai_bao: '',
+            });
+            setFileEntries([{ id: `file-${Date.now()}`, fileObject: null, description: '' }]);
+            setSubmissionSucceeded(false); // Reset lại trigger
+            // Giữ lại success message để người dùng thấy, nó sẽ tự mất khi họ dismiss hoặc submit lần nữa
+        }
+    }, [submissionSucceeded]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -104,7 +117,7 @@ const DeclareArticlePage = () => {
         }
         setIsLoading(true);
         setError(null);
-        setSuccess(null);
+        setSuccess(null); // Xóa thông báo cũ trước khi submit
 
         try {
             await fetchCsrfToken();
@@ -126,11 +139,10 @@ const DeclareArticlePage = () => {
 
             // Gọi hàm API thật để gửi dữ liệu
             const response = await submitActualArticleDeclaration(researchId, dataToSubmit);
+            
             setSuccess(response.data.message || "Khai báo thành công! Chờ quản trị viên duyệt.");
-            setFormData({
-                ten_bai_bao: '', ngay_xuat_ban: '', mo_ta_bai_bao: '',
-            });
-            setFileEntries([{ id: `file-${Date.now()}`, fileObject: null, description: '' }]); // Reset về 1 mục nhập rỗng
+            // Không reset form trực tiếp ở đây nữa
+            setSubmissionSucceeded(true); // Trigger việc reset form trong useEffect
         } catch (err) {
             console.error("Error submitting article declaration:", err);
             setError(err.response?.data?.message || "Khai báo thất bại. Vui lòng thử lại.");
@@ -155,11 +167,12 @@ const DeclareArticlePage = () => {
                 </Col>
             </Row>
 
-            {error && <Alert variant="danger" onClose={() => setError(null)} dismissible>{error}</Alert>}
-            {success && <Alert variant="success" onClose={() => setSuccess(null)} dismissible>{success}</Alert>}
-
             <Card className="shadow-sm">
                 <Card.Body>
+                    {/* Bỏ comment và di chuyển Alert vào trong Card.Body, thêm key và class mb-3 */}
+                    {error && <Alert key="error-alert" variant="danger" onClose={() => setError(null)} dismissible className="mb-3">{error}</Alert>}
+                    {success && <Alert key="success-alert" variant="success" onClose={() => setSuccess(null)} dismissible className="mb-3">{success}</Alert>}
+
                     <Form onSubmit={handleSubmit}>
                         <Form.Group className="mb-3" controlId="ten_bai_bao">
                             <Form.Label>Tên bài báo <span className="text-danger">*</span></Form.Label>

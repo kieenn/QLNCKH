@@ -29,6 +29,7 @@ use App\Events\BaiBaoSubmitted; // Thêm Event cho nộp bài báo
 use App\Models\BaiBao; // Thêm model BaiBao
 use App\Models\TaiLieu; // Thêm model TaiLieu
 use Illuminate\Support\Facades\Storage; // Thêm Storage facade
+use App\Models\Notification; // Thêm model Notification
 use App\Models\TrangThaiDeTai;
 
 class LecturerController extends Controller
@@ -646,5 +647,80 @@ class LecturerController extends Controller
             Log::error('Lỗi khi nộp bài báo cho đề tài ID ' . $deTai->id . ': ' . $e->getMessage() . ' Stack Trace: ' . $e->getTraceAsString());
             return response()->json(['message' => 'Đã xảy ra lỗi khi nộp bài báo.', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Lấy danh sách thông báo cho giảng viên đang đăng nhập.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getLecturerNotifications(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $perPage = $request->input('per_page', 10); // Số lượng thông báo mỗi trang
+
+        $notifications = Notification::where('notifiable_id', $user->id)
+                                ->where('notifiable_type', User::class)
+                                ->orderBy('created_at', 'desc')
+                                ->paginate($perPage);
+
+        $unreadCount = Notification::where('notifiable_id', $user->id)
+                               ->where('notifiable_type', User::class)
+                               ->whereNull('read_at')
+                               ->count();
+
+        return response()->json([
+            'notifications' => $notifications,
+            'unread_count' => $unreadCount,
+        ]);
+    }
+
+    /**
+     * Đánh dấu một thông báo cụ thể là đã đọc.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $notificationId UUID của thông báo
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markNotificationAsRead(Request $request, $notificationId)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        $notification = Notification::where('id', $notificationId)
+                                ->where('notifiable_id', $user->id)
+                                ->where('notifiable_type', User::class)
+                                ->first();
+
+        if ($notification && is_null($notification->read_at)) {
+            $notification->read_at = now();
+            $notification->save();
+            return response()->json(['message' => 'Thông báo đã được đánh dấu là đã đọc.']);
+        }
+
+        if ($notification && !is_null($notification->read_at)) {
+            return response()->json(['message' => 'Thông báo này đã được đọc trước đó.'], 200);
+        }
+
+        return response()->json(['message' => 'Không tìm thấy thông báo hoặc bạn không có quyền.'], 404);
+    }
+
+    /**
+     * Đánh dấu tất cả thông báo của giảng viên là đã đọc.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markAllNotificationsAsRead(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        Notification::where('notifiable_id', $user->id)
+                    ->where('notifiable_type', User::class)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'Tất cả thông báo đã được đánh dấu là đã đọc.']);
     }
 }

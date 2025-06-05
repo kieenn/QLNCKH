@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import {
     Container, Card, Table, Button, Spinner, Alert, Pagination, Row, Col, InputGroup, FormControl,
-    Modal, Badge, Form, ButtonGroup, ListGroup
+    Modal, Badge, Form as BootstrapForm, ButtonGroup, ListGroup // Renamed Form to BootstrapForm
 } from 'react-bootstrap';
 import { FaEye, FaCheckCircle, FaTimesCircle, FaFilter, FaFileAlt, FaDownload, FaSyncAlt } from 'react-icons/fa';
 import usePagination from '../../hooks/usePagination';
 // Giả sử bạn sẽ tạo các hàm API này trong adminApi.js
 import {
-    getPendingArticles,
+    getPendingArticles, // This API endpoint will now receive trang_thai filter
     getArticleDetailsForAdmin, // Lấy chi tiết bài báo (bao gồm file)
     approveArticleByAdmin,
     rejectArticleByAdmin
 } from '../../api/adminApi';
 import { fetchCsrfToken } from '../../api/axiosConfig';
-// import { initPusher, subscribeToAdminNotifications, unsubscribeFromAdminNotifications } from '../../services/pusherService'; // Xóa import này
+
 const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     try {
@@ -33,7 +33,6 @@ const truncateStyle = {
 
 const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
     if (!article) return null;
-    // Access environment variable using process.env for Create React App
     const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
 
     const getFileName = (filePath) => {
@@ -46,7 +45,7 @@ const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
             <Modal.Header closeButton>
                 <Modal.Title as="h5">Chi tiết Bài báo: {article.ten_bai_bao}</Modal.Title>
                 {article.trang_thai && (
-                    <Badge pill bg={article.trang_thai === 'đã duyệt' ? 'success' : article.trang_thai === 'bị từ chối' ? 'danger' : 'warning'} className="ms-3">
+                    <Badge pill bg={article.trang_thai === 'đã duyệt' ? 'success' : article.trang_thai === 'từ chối' ? 'danger' : 'warning'} className="ms-3">
                         {article.trang_thai.charAt(0).toUpperCase() + article.trang_thai.slice(1)}
                     </Badge>
                 )}
@@ -82,7 +81,6 @@ const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
                     </Row>
                 )}
 
-
                 <h6 className="text-primary mt-4 mb-2">Mô tả bài báo:</h6>
                 <Card body className="bg-light mb-3">
                     <div style={{ whiteSpace: 'pre-wrap' }}>{article.mo_ta_bai_bao || article.mo_ta || 'Không có mô tả.'}</div>
@@ -93,7 +91,6 @@ const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
                     <ListGroup variant="flush">
                         {article.tai_lieu.map(doc => {
                             const fileName = getFileName(doc.file_path);
-                            // Assuming files are served from Laravel's public storage
                             const fileUrl = `${API_URL}/storage/${doc.file_path}`;
                             return (
                                 <ListGroup.Item key={doc.id} className="d-flex justify-content-between align-items-center ps-1 pe-1 pt-2 pb-2">
@@ -113,7 +110,7 @@ const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
                     </ListGroup>
                 ) : <p className="text-muted">Không có file đính kèm.</p>}
 
-                {(article.nhan_xet || article.ly_do_tu_choi || (article.admin_xet_duyet && article.trang_thai === 'bị từ chối')) && (
+                {(article.nhan_xet || article.ly_do_tu_choi || (article.admin_xet_duyet && article.trang_thai === 'từ chối')) && (
                     <>
                         <h6 className="text-danger mt-4 mb-2">Lý do từ chối / Nhận xét:</h6>
                         <Card body className="bg-light border-danger">
@@ -124,7 +121,7 @@ const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
             </Modal.Body>
             <Modal.Footer>
                 <Button variant="secondary" onClick={onHide}>Đóng</Button>
-                {article.trang_thai === 'chờ duyệt' && ( // Chỉ hiển thị nút nếu đang chờ duyệt (khớp với DB)
+                {article.trang_thai === 'chờ duyệt' && (
                     <>
                         <Button variant="danger" onClick={() => onAction('reject', article)}>
                             <FaTimesCircle className="me-1" /> Từ chối
@@ -167,9 +164,9 @@ const ActionModal = ({ show, onHide, article, actionType, onSubmit, isLoading })
                 <p>Bạn có chắc chắn muốn <strong>{actionType === 'approve' ? 'duyệt' : 'từ chối'}</strong> bài báo:</p>
                 <p><strong>"{article.ten_bai_bao}"</strong>?</p>
                 {actionType === 'reject' && (
-                    <Form.Group controlId="rejectionReason">
-                        <Form.Label>Lý do từ chối <span className="text-danger">*</span></Form.Label>
-                        <Form.Control
+                    <BootstrapForm.Group controlId="rejectionReason">
+                        <BootstrapForm.Label>Lý do từ chối <span className="text-danger">*</span></BootstrapForm.Label>
+                        <BootstrapForm.Control
                             as="textarea"
                             rows={3}
                             value={reason}
@@ -177,7 +174,7 @@ const ActionModal = ({ show, onHide, article, actionType, onSubmit, isLoading })
                             placeholder="Nhập lý do từ chối..."
                             disabled={isLoading}
                         />
-                    </Form.Group>
+                    </BootstrapForm.Group>
                 )}
             </Modal.Body>
             <Modal.Footer>
@@ -198,10 +195,10 @@ const ApproveArticlesPage = () => {
     const {
         data: articles, loading: isLoadingArticles, error: fetchError,
         goToPage, refetch: refetchArticles, updateFilters, queryParams, paginationData
-    } = usePagination(getPendingArticles); // Backend sẽ tự xử lý lấy bài báo chờ duyệt
+    } = usePagination(getPendingArticles);
 
     const [searchTerm, setSearchTerm] = useState(queryParams?.search_keyword || '');
-    // Thêm các state cho bộ lọc khác nếu cần (ví dụ: giảng viên, đề tài)
+    const [statusFilter, setStatusFilter] = useState(queryParams?.trang_thai || ''); // State for status filter
 
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedArticle, setSelectedArticle] = useState(null);
@@ -212,15 +209,17 @@ const ApproveArticlesPage = () => {
 
     useEffect(() => {
         const timerId = setTimeout(() => {
-            updateFilters({ search_keyword: searchTerm.trim() });
+            updateFilters({ 
+                search_keyword: searchTerm.trim(),
+                trang_thai: statusFilter // Include statusFilter in the update
+            });
         }, 500);
         return () => clearTimeout(timerId);
-    }, [searchTerm, updateFilters]);
+    }, [searchTerm, statusFilter, updateFilters]); // Add statusFilter to dependency array
 
     const handleViewDetails = async (articleId) => {
         try {
-            // Gọi API lấy chi tiết bài báo, bao gồm cả file
-            const response = await getArticleDetailsForAdmin(articleId); // response is assumed to be an Axios response object.
+            const response = await getArticleDetailsForAdmin(articleId);
             setSelectedArticle(response.data); 
             setShowDetailsModal(true);
         } catch (err) {
@@ -234,7 +233,7 @@ const ApproveArticlesPage = () => {
         setSelectedArticle(article);
         setActionType(type);
         setShowActionModal(true);
-        setShowDetailsModal(false); // Đóng modal chi tiết nếu đang mở
+        setShowDetailsModal(false);
     };
 
     const handleSubmitAction = async (articleId, data) => {
@@ -250,7 +249,7 @@ const ApproveArticlesPage = () => {
             }
             setActionAlert({ show: true, variant: 'success', message: response.data.message || 'Thao tác thành công!' });
             setShowActionModal(false);
-            refetchArticles();
+            refetchArticles(); // Refetch to update the list
         } catch (err) {
             setActionAlert({ show: true, variant: 'danger', message: err.response?.data?.message || 'Thao tác thất bại.' });
         } finally {
@@ -272,6 +271,14 @@ const ApproveArticlesPage = () => {
         return items;
     };
 
+    const getListTitle = () => {
+        if (statusFilter === 'đã duyệt') return "Danh sách Bài báo đã duyệt";
+        if (statusFilter === 'từ chối') return "Danh sách Bài báo đã từ chối";
+        if (statusFilter === 'chờ duyệt') return "Danh sách Bài báo chờ duyệt";
+        if (statusFilter === '') return "Danh sách Tất cả Bài báo";
+        return `Bài báo ${statusFilter ? (statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)) : 'Tất cả'}`;
+    };
+
     return (
         <Container fluid className="p-4">
             <h1 className="h3 mb-3">Xét duyệt Khai báo Bài báo</h1>
@@ -282,31 +289,47 @@ const ApproveArticlesPage = () => {
                 </Alert>
             )}
 
-            <Card className="my-4 shadow-sm"> {/* Added my-4 for vertical margin */}
+            <Card className="my-4 shadow-sm">
                 <Card.Header className="bg-light py-3">
                     <h6 className="m-0 fw-bold text-primary"><FaFilter className="me-2" />Bộ lọc</h6>
                 </Card.Header>
                 <Card.Body>
-                    <Row>
-                        <Col md={8} lg={6}> {/* Adjusted column width */}
+                    <Row className="g-3 align-items-center"> {/* Added g-3 for gutter and align-items-center */}
+                        <Col md={6} lg={5}>
                             <InputGroup>
                                 <FormControl
-                                    placeholder="Tìm tên bài báo, tên giảng viên, mã đề tài..."
+                                    placeholder="Tìm tên bài báo, tên đề tài, mã đề tài, người khai báo..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     disabled={isLoadingArticles}
                                 />
                             </InputGroup>
                         </Col>
-                        {/* Thêm các bộ lọc khác nếu cần */}
+                        <Col md={6} lg={4}>
+                            <BootstrapForm.Group controlId="statusFilterSelect" className="mb-0"> {/* Removed mb-3 from here if Row has g-3 */}
+                                <BootstrapForm.Label visuallyHidden>Lọc theo trạng thái</BootstrapForm.Label>
+                                <BootstrapForm.Select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    disabled={isLoadingArticles}
+                                    aria-label="Lọc theo trạng thái bài báo"
+                                >
+                                    <option value="chờ duyệt">Chờ duyệt</option>
+                                    <option value="đã duyệt">Đã duyệt</option>
+                                    <option value="từ chối">Từ chối</option>
+                                    <option value="">Tất cả trạng thái</option> 
+                                </BootstrapForm.Select>
+                            </BootstrapForm.Group>
+                        </Col>
+                        {/* Add more filter controls here if needed, adjusting Col spans */}
                     </Row>
                 </Card.Body>
             </Card>
 
-            <Card className="shadow-sm mb-4"> {/* Added mb-4 */}
+            <Card className="shadow-sm mb-4">
                 <Card.Header className="py-3 bg-light text-primary d-flex justify-content-between align-items-center">
                     <div className="d-flex align-items-center">
-                        <h6 className="m-0 fw-bold">Danh sách Bài báo chờ duyệt</h6>
+                        <h6 className="m-0 fw-bold">{getListTitle()}</h6>
                         <Button variant="link" size="sm" onClick={() => refetchArticles()} disabled={isLoadingArticles} className="ms-2 p-0" title="Tải lại danh sách">
                             <FaSyncAlt className={isLoadingArticles ? 'fa-spin' : ''} />
                         </Button>
@@ -319,7 +342,12 @@ const ApproveArticlesPage = () => {
                     ) : fetchError ? (
                         <Alert variant="danger" className="m-3">Lỗi: {fetchError.message || 'Không thể tải danh sách bài báo.'}</Alert>
                     ) : !articles || articles.length === 0 ? (
-                        <Alert variant="info" className="m-3">Không có bài báo nào đang chờ duyệt.</Alert>
+                        <Alert variant="info" className="m-3">
+                            {statusFilter === 'chờ duyệt' && !searchTerm && !queryParams?.trang_thai // More specific check for initial load
+                                ? 'Không có bài báo nào đang chờ duyệt.'
+                                : `Không tìm thấy bài báo nào phù hợp với bộ lọc hiện tại.`
+                            }
+                        </Alert>
                     ) : (
                         <Table striped bordered hover responsive="lg" className="align-middle mb-0">
                             <thead>
@@ -348,8 +376,8 @@ const ApproveArticlesPage = () => {
                                         <td className="text-center">
                                             <Badge pill bg={
                                                 article.trang_thai === 'đã duyệt' ? 'success'
-                                                    : article.trang_thai === 'bị từ chối' ? 'danger'
-                                                        : 'warning' // Mặc định cho 'chờ duyệt' hoặc các trạng thái khác
+                                                    : article.trang_thai === 'từ chối' ? 'danger' // Updated to 'từ chối'
+                                                        : 'warning'
                                             }>
                                                 {article.trang_thai ? (article.trang_thai.charAt(0).toUpperCase() + article.trang_thai.slice(1)) : 'N/A'}
                                             </Badge>
@@ -363,7 +391,7 @@ const ApproveArticlesPage = () => {
                                                     variant="outline-danger"
                                                     size="sm"
                                                     onClick={() => handleOpenActionModal('reject', article)}
-                                                    title={article.trang_thai !== 'chờ duyệt' ? `Bài báo đã ${article.trang_thai}` : "Từ chối"}
+                                                    title={article.trang_thai !== 'chờ duyệt' ? `Bài báo ${article.trang_thai}` : "Từ chối"}
                                                     disabled={article.trang_thai !== 'chờ duyệt'}
                                                 >
                                                     <FaTimesCircle />
@@ -372,7 +400,7 @@ const ApproveArticlesPage = () => {
                                                     variant="outline-success"
                                                     size="sm"
                                                     onClick={() => handleOpenActionModal('approve', article)}
-                                                    title={article.trang_thai !== 'chờ duyệt' ? `Bài báo đã ${article.trang_thai}` : "Duyệt"}
+                                                    title={article.trang_thai !== 'chờ duyệt' ? `Bài báo ${article.trang_thai}` : "Duyệt"}
                                                     disabled={article.trang_thai !== 'chờ duyệt'}
                                                 >
                                                     <FaCheckCircle />

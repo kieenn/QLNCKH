@@ -235,3 +235,7 @@ export const rejectArticleByAdmin = async (articleId, data) => {
     // data nên chứa { ly_do_tu_choi: "..." }
     return apiClient.post(`/api/admin/articles/${articleId}/reject`, data); // Ví dụ endpoint
 };
+
+export const getDashboardStats = async () => {
+    return apiClient.get('/api/admin/dashboard-stats');
+};
