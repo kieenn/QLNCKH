@@ -210,7 +210,7 @@ const ResearchArticlesListPage = () => {
         <Container fluid className="p-4">
             <Row className="mb-3 align-items-center">
                 <Col xs="auto">
-                    <Button as={RouterLink} to="/lecturer/researches" variant="light"> {/* Adjusted back link */}
+                    <Button as={RouterLink} to="/lecturer" variant="light"> {/* Adjusted back link */}
                         <FaArrowLeft /> Quay lại DS Đề tài
                     </Button>
                 </Col>
