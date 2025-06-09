@@ -11,6 +11,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str; // Import Str for UUID
 
 class BaiBaoApproved implements ShouldBroadcastNow
 {
@@ -40,13 +41,34 @@ class BaiBaoApproved implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
+        $notificationType = 'BaiBaoApproved';
+        $title = 'Bài báo đã được duyệt';
+        $body = "Bài báo \"{$this->baiBao->ten_bai_bao}\" của bạn đã được duyệt.";
+
+        $this->baiBao->loadMissing('deTai');
+        $deTaiTen = $this->baiBao->deTai ? $this->baiBao->deTai->ten_de_tai : 'Không rõ';
+        $body .= " Liên quan đến đề tài: \"{$deTaiTen}\".";
+
+        $link = "/lecturer/articles/{$this->baiBao->id}";
+
+        $details = [
+            'baiBaoId' => $this->baiBao->id,
+            'baiBaoTen' => $this->baiBao->ten_bai_bao,
+            'deTaiId' => $this->baiBao->deTai ? $this->baiBao->deTai->id : null,
+            'deTaiMa' => $this->baiBao->deTai ? $this->baiBao->deTai->ma_de_tai : null,
+            'deTaiTen' => $deTaiTen,
+            'adminHoTen' => $this->admin->ho_ten,
+        ];
+
         return [
-            'bai_bao_id' => $this->baiBao->id,
-            'ten_bai_bao' => $this->baiBao->ten_bai_bao,
-            'de_tai_ten' => $this->baiBao->deTai->ten_de_tai ?? 'N/A', // Lấy tên đề tài nếu có
-            'admin_name' => $this->admin->ho_ten,
-            'message' => "Bài báo '{$this->baiBao->ten_bai_bao}' của bạn đã được duyệt bởi admin {$this->admin->ho_ten}.",
-            'approved_at' => now()->toDateTimeString(),
+            'id' => Str::uuid()->toString(),
+            'type' => $notificationType,
+            'title' => $title,
+            'body' => $body,
+            'link' => $link,
+            'details' => $details,
+            'created_at' => now()->toIso8601String(),
+            'read_at' => null,
         ];
     }
 }

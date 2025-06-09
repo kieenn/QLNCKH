@@ -28,8 +28,8 @@ class SendBaiBaoNotification
         $baiBao = $event->baiBao;
         $admin = $event->admin;
         $isApproved = $event instanceof BaiBaoApproved;
-        // Assuming BaiBaoRejected event has a public property named $lyDoTuChoi
-        $rejectionReason = $isApproved ? null : ($event->lyDoTuChoi ?? 'Không có lý do cụ thể.');
+        // Access the 'reason' property from BaiBaoRejected event
+        $rejectionReason = $isApproved ? null : ($event->reason ?? 'Không có lý do cụ thể.');
 
         // Find the user who submitted the BaiBao
         // Ensure the relationship is loaded if not already

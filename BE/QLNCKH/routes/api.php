@@ -94,6 +94,9 @@ Route::middleware('web')->group(function () {
         Route::get('/researches/{deTai}/edit-details', [LecturerController::class, 'getDeTaiDetail']);
         Route::put('/researches/{deTai}', [LecturerController::class, 'updateDetaiSubmited'])->name('lecturer.researches.update');
 
+        // Route mới để lấy danh sách đề tài sắp đến hạn nộp
+        Route::get('/lecturer/deadline-reminders', [LecturerController::class, 'getDeadlineReminders']);
+
         Route::get('/admin/research-proposals/pending-approval', [AdminController::class, 'getListDeTaiXetDuyet']);
         Route::get('/admin/vai-tro', [AdminController::class, 'getVaiTro']);
         Route::put('/admin/research-proposals/{deTai}/review', [AdminController::class, 'setDeTai']);
@@ -110,6 +113,7 @@ Route::middleware('web')->group(function () {
         Route::get('/notifications', [App\Http\Controllers\LecturerController::class, 'getLecturerNotifications']);
     Route::patch('/notifications/{notification_id}/read', [App\Http\Controllers\LecturerController::class, 'markNotificationAsRead']);
     Route::patch('/notifications/mark-all-as-read', [App\Http\Controllers\LecturerController::class, 'markAllNotificationsAsRead']);
+        Route::get('/notifications/{notification}', [App\Http\Controllers\LecturerController::class, 'showNotification']);
 
     });
 });

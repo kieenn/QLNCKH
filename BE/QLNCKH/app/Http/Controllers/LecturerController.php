@@ -723,4 +723,78 @@ class LecturerController extends Controller
 
         return response()->json(['message' => 'Tất cả thông báo đã được đánh dấu là đã đọc.']);
     }
+
+    /**
+     * Lấy danh sách các đề tài NCKH sắp đến hạn nộp cho giảng viên đang đăng nhập.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getDeadlineReminders(Request $request)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $userMsvc = $user->msvc;
+        $thresholdDays = env('DEADLINE_REMINDER_DAYS', 7); // Số ngày thông báo trước, có thể đặt trong .env, mặc định 7 ngày
+        $today = Carbon::today();
+        $reminderCutoffDate = Carbon::today()->addDays($thresholdDays);
+
+        $reminders = DeTai::where(function ($query) use ($userMsvc) {
+            $query->where('msvc_gvdk', $userMsvc) // Giảng viên đăng ký đề tài
+                  ->orWhereHas('giangVienThamGia', function ($q) use ($userMsvc) {
+                      $q->where('users.msvc', $userMsvc); // Giảng viên có tham gia
+                  });
+        })
+        ->whereNotNull('ngay_ket_thuc_dukien')
+        ->whereDate('ngay_ket_thuc_dukien', '>=', $today) // Hạn nộp từ hôm nay trở đi
+        ->whereDate('ngay_ket_thuc_dukien', '<=', $reminderCutoffDate) // Và trong khoảng X ngày tới
+        ->select('id', 'ten_de_tai', 'ngay_ket_thuc_dukien', 'ma_de_tai')
+        ->orderBy('ngay_ket_thuc_dukien', 'asc') // Ưu tiên hạn nộp gần nhất
+        ->get()
+        ->map(function ($deTai) use ($today) {
+            $deadline = Carbon::parse($deTai->ngay_ket_thuc_dukien);
+            $daysRemaining = $today->diffInDays($deadline, false); // false để không lấy giá trị tuyệt đối
+            
+            return [
+                'de_tai_id' => $deTai->id,
+                'ma_de_tai' => $deTai->ma_de_tai,
+                'ten_de_tai' => $deTai->ten_de_tai,
+                'ngay_ket_thuc_dukien' => $deadline->format('Y-m-d'),
+                'days_remaining' => $daysRemaining >= 0 ? $daysRemaining : 0, // Đảm bảo không hiển thị số âm
+            ];
+        });
+
+        return response()->json($reminders);
+    }
+    public function showNotification(Request $request, Notification $notification) // Sử dụng Route Model Binding
+{
+    /** @var \App\Models\User $user */
+    Log::info("LecturerController@showNotification: Received request for notification ID: {$notification->id}");
+    $user = Auth::user();
+    Log::info("LecturerController@showNotification: Authenticated user ID: {$user->id}");
+
+    if ($notification->notifiable_id !== $user->id || $notification->notifiable_type !== User::class) {
+        Log::warning("LecturerController@showNotification: User {$user->id} attempted to access notification {$notification->id} which belongs to {$notification->notifiable_type} ID {$notification->notifiable_id}. Access denied.");
+        return response()->json(['message' => 'Bạn không có quyền xem thông báo này.'], 403);
+    }
+
+    // Chuẩn hóa output để frontend dễ xử lý (cấu trúc phẳng)
+    $standardizedNotification = [
+        'id' => $notification->id,
+        'type' => $notification->type,
+        'title' => $notification->data['title'] ?? 'Thông báo không có tiêu đề',
+        'body' => $notification->data['body'] ?? '',
+        'link' => $notification->data['link'] ?? null,
+        'details' => $notification->data['details'] ?? null,
+        'created_at' => $notification->created_at->toIso8601String(), // Chuẩn hóa định dạng ngày giờ
+        'read_at' => $notification->read_at ? $notification->read_at->toIso8601String() : null,
+    ];
+
+    Log::info("LecturerController@showNotification: Successfully fetched and standardized notification {$notification->id}.");
+    return response()->json($standardizedNotification);
+}
 }

@@ -26,17 +26,30 @@ export const initPusher = () => {
     return null;
   }
 
-  if (pusherClient && pusherClient.connection.state === 'connected') {
-    console.log("Pusher Service: Pusher client đã được khởi tạo và kết nối trước đó.");
+  // Nếu pusherClient đã tồn tại và đang kết nối hoặc đã kết nối
+  if (pusherClient && (pusherClient.connection.state === 'connected' || pusherClient.connection.state === 'connecting')) {
+    console.log("Pusher Service: Pusher client đã được khởi tạo và đang hoạt động. State:", pusherClient.connection.state);
     return pusherClient;
   }
   
-  if (pusherClient && pusherClient.connection.state !== 'disconnected') {
-    console.log("Pusher Service: Pusher client đang ở trạng thái không phải disconnected, không khởi tạo lại:", pusherClient.connection.state);
-    return pusherClient;
+  // Nếu có client cũ nhưng không ở trạng thái connected/connecting (ví dụ: 'disconnected', 'failed', 'unavailable')
+  // Ngắt kết nối nó hoàn toàn trước khi tạo mới để tránh rò rỉ hoặc subscription kép.
+  if (pusherClient) {
+    console.warn("Pusher Service: Previous Pusher client instance exists with state:", pusherClient.connection.state, ". Disconnecting it before creating a new one.");
+    pusherClient.disconnect(); // Ngắt kết nối instance cũ. Các channel và binding của nó sẽ tự động bị hủy khi disconnect.
+    
+    // Reset các biến global liên quan đến channel vì chúng thuộc về instance cũ.
+    // Điều này quan trọng để đảm bảo các hàm subscribeTo...Notifications sẽ hoạt động đúng với client mới.
+    adminChannel = null;
+    isAdminEventsBound = false;
+    currentAdminNotificationCallback = () => {};
+
+    lecturerChannel = null;
+    isLecturerEventsBound = false;
+    currentLecturerNotificationCallback = () => {};
   }
 
-  console.log("Pusher Service: Đang khởi tạo Pusher client với Key:", PUSHER_APP_KEY, "Cluster:", PUSHER_APP_CLUSTER);
+  console.log("Pusher Service: Đang khởi tạo Pusher client MỚI với Key:", PUSHER_APP_KEY, "Cluster:", PUSHER_APP_CLUSTER);
   pusherClient = new Pusher(PUSHER_APP_KEY, {
     cluster: PUSHER_APP_CLUSTER,
     authEndpoint: '/broadcasting/auth', // Endpoint này phải khớp với backend Laravel
@@ -113,6 +126,7 @@ export const subscribeToAdminNotifications = (onNotificationCallback) => {
 
   if (!adminChannel || adminChannel.name !== channelName) {
     if (adminChannel) {
+        adminChannel.unbind_all(); // Đảm bảo gỡ bỏ tất cả bindings cũ trên kênh admin cũ
         pusherClient.unsubscribe(adminChannel.name);
         console.log(`Pusher Service (Admin): Đã hủy đăng ký kênh admin cũ: ${adminChannel.name}`);
         isAdminEventsBound = false;
@@ -151,6 +165,7 @@ export const subscribeToAdminNotifications = (onNotificationCallback) => {
 export const unsubscribeFromAdminNotifications = () => {
   if (adminChannel && pusherClient) {
     const channelName = adminChannel.name;
+    adminChannel.unbind_all(); // Gỡ bỏ tất cả bindings trước khi hủy đăng ký
     pusherClient.unsubscribe(channelName);
     isAdminEventsBound = false;
     adminChannel = null;
@@ -180,6 +195,7 @@ export const subscribeToLecturerNotifications = (lecturerMsvc, onNotificationCal
 
   if (!lecturerChannel || lecturerChannel.name !== channelName) {
     if (lecturerChannel) {
+        lecturerChannel.unbind_all(); // Đảm bảo gỡ bỏ tất cả bindings cũ trên kênh giảng viên cũ
         pusherClient.unsubscribe(lecturerChannel.name);
         console.log(`Pusher Service (Lecturer): Đã hủy đăng ký kênh giảng viên cũ: ${lecturerChannel.name}`);
         isLecturerEventsBound = false;
@@ -220,6 +236,7 @@ export const subscribeToLecturerNotifications = (lecturerMsvc, onNotificationCal
 export const unsubscribeFromLecturerNotifications = () => {
   if (lecturerChannel && pusherClient) {
     const channelName = lecturerChannel.name;
+    lecturerChannel.unbind_all(); // Gỡ bỏ tất cả bindings trước khi hủy đăng ký
     pusherClient.unsubscribe(channelName);
     isLecturerEventsBound = false;
     lecturerChannel = null;

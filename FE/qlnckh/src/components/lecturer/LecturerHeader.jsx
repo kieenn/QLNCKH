@@ -24,7 +24,7 @@ const LecturerHeader = () => {
 
     // Nếu không dùng context, quản lý state tại đây (ví dụ, được truyền từ LecturerNotificationListener)
     // Props này sẽ được truyền từ LecturerNotificationListener hoặc một component cha quản lý state
-    const { user } = useAuth(); // Lấy thông tin user, giả sử có trường msvc
+    const { user, logout } = useAuth(); // Lấy thông tin user và hàm logout
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
@@ -38,8 +38,22 @@ const LecturerHeader = () => {
         setIsLoading(true);
         try {
             const response = await lecturerApiService.getLecturerNotifications();
-            // console.log("Fetched notifications:", response.data); // Log để kiểm tra cấu trúc
-            setNotifications(response.data.notifications.data || []);
+            const fetchedNotifications = response.data.notifications.data || [];
+            
+            // Transform fetched notifications to the flat structure
+            const standardizedNotifications = fetchedNotifications.map(notif => ({
+                id: notif.id,
+                type: notif.type, // Keep original type if present
+                // Standardize to top-level properties, similar to Pusher notifications
+                title: notif.data?.details?.deTaiTen ? `Đề tài "${notif.data.details.deTaiTen}" ${notif.data.title?.toLowerCase().includes('duyệt') ? 'đã được duyệt' : (notif.data.title?.toLowerCase().includes('từ chối') ? 'bị từ chối' : '')}` : (notif.data?.details?.baiBaoTen ? `Bài báo "${notif.data.details.baiBaoTen}" ${notif.data.title?.toLowerCase().includes('duyệt') ? 'đã được duyệt' : (notif.data.title?.toLowerCase().includes('từ chối') ? 'bị từ chối' : '')}` : (notif.data?.title || 'Thông báo không có tiêu đề')),
+                body: notif.data?.body || '', // Keep original body
+                link: notif.data?.link, // Keep original link
+                details: notif.data?.details, // Keep original details
+                created_at: notif.created_at,
+                read_at: notif.read_at,
+            }));
+            console.log("LecturerHeader: Standardized fetched notifications:", JSON.stringify(standardizedNotifications, null, 2));
+            setNotifications(standardizedNotifications);
             setUnreadCount(response.data.unread_count || 0);
         } catch (error) {
             console.error("Error fetching notifications:", error);
@@ -60,7 +74,8 @@ const LecturerHeader = () => {
         const lecturerMsvc = user?.msvc; // Giả sử user object có trường msvc (Mã số giảng viên)
 
         const handleNewLecturerNotification = (notificationEvent) => {
-            console.log("LecturerHeader: New notification received via Pusher:", notificationEvent);
+            console.log("LecturerHeader: New notification received via Pusher:", JSON.stringify(notificationEvent, null, 2));
+            console.log("LecturerHeader: Accessing notificationEvent.payload.title directly:", notificationEvent?.payload?.title);
             // Backend PHẢI gửi một object thông báo hoàn chỉnh trong payload, bao gồm:
             // id: ID thực sự của thông báo trong DB
             // data: { title: '...', body: '...' }
@@ -68,27 +83,30 @@ const LecturerHeader = () => {
             // (read_at sẽ là null cho thông báo mới)
 
             if (notificationEvent && notificationEvent.payload && notificationEvent.payload.id) {
-                const payloadData = notificationEvent.payload;
+                const receivedPayload = notificationEvent.payload; // Đây là object phẳng từ BE
 
-                const newNotification = {
-                    id: payloadData.id, // QUAN TRỌNG: Sử dụng ID từ payload do backend cung cấp
-                    data: payloadData.data || { title: 'Thông báo không có tiêu đề', body: '' }, // Đảm bảo 'data' object tồn tại
-                    created_at: payloadData.created_at || new Date().toISOString(), // Lấy created_at từ payload hoặc fallback
-                    read_at: null, // Thông báo mới luôn chưa đọc
-                    // Các trường khác mà backend có thể gửi và bạn muốn sử dụng
-                };
+                // Tạo tiêu đề chi tiết hơn
+                let detailedTitle = receivedPayload.title || 'Thông báo không có tiêu đề';
+                if (receivedPayload.details?.deTaiTen) {
+                    detailedTitle = `Đề tài "${receivedPayload.details.deTaiTen}" ${receivedPayload.type === 'DeTaiApproved' ? 'đã được duyệt' : (receivedPayload.type === 'DeTaiRejected' ? 'bị từ chối' : '')}`;
+                } else if (receivedPayload.details?.baiBaoTen) {
+                    detailedTitle = `Bài báo "${receivedPayload.details.baiBaoTen}" ${receivedPayload.type === 'BaiBaoApproved' ? 'đã được duyệt' : (receivedPayload.type === 'BaiBaoRejected' ? 'bị từ chối' : '')}`;
+                }
 
-                setNotifications(prevNotifications => {
-                    // Tránh thêm thông báo trùng lặp nếu có (dựa vào ID)
-                    if (prevNotifications.some(n => n.id === newNotification.id)) {
-                        console.log("LecturerHeader: Notification already exists, not adding:", newNotification.id);
-                        return prevNotifications;
-                    }
-                    // Thêm thông báo mới vào đầu danh sách và giới hạn số lượng
-                    return [newNotification, ...prevNotifications].slice(0, 10); // Giới hạn 10 thông báo trong dropdown
-                });
+
+                // Hiển thị toast cho thông báo mới
+                toast.info(`Thông báo mới: ${detailedTitle || 'Nội dung không xác định'}`, { autoClose: 8000 });
+                
+                // Cập nhật số lượng chưa đọc một cách lạc quan
                 setUnreadCount(prevCount => prevCount + 1);
-                toast.info(`Thông báo mới: ${newNotification.data?.title || 'Nội dung không xác định'}`, { autoClose: 8000 });
+
+                // Quan trọng: Gọi lại fetchNotificationsData để làm mới danh sách từ API
+                // Điều này đảm bảo tất cả thông báo trong dropdown đều có ID và dữ liệu từ DB.
+                console.log("LecturerHeader: Pusher event received, refetching notifications from API.");
+                fetchNotificationsData();
+
+                // Không thêm trực tiếp newNotification (từ Pusher payload) vào state `notifications` nữa
+                // vì fetchNotificationsData sẽ cập nhật nó với dữ liệu đầy đủ từ API.
             } else {
                 console.warn(
                     "LecturerHeader: Received Pusher notification without a valid payload or 'id'. Notification was not added. Event data:",
@@ -169,13 +187,19 @@ const LecturerHeader = () => {
         setShowDropdown(false); // Đóng dropdown khi click
 
         if (!notification || !notification.id) {
-            console.error("LecturerHeader: Cannot process notification click, notification or ID is missing.", notification);
+            console.error("LecturerHeader: handleNotificationClick - Notification or ID is missing.", JSON.stringify(notification, null, 2));
             toast.error("Lỗi: Không thể xử lý thông báo này.");
             return;
         }
+        console.log("LecturerHeader: handleNotificationClick - Clicked notification:", JSON.stringify(notification, null, 2));
+
+        // Tìm thông báo trong state hiện tại để đảm bảo làm việc với dữ liệu mới nhất (tùy chọn, thường không cần thiết nếu state cập nhật đúng)
+        // const currentNotificationInState = notifications.find(n => n.id === String(notification.id));
+        // console.log("LecturerHeader: handleNotificationClick - Current notification in state:", JSON.stringify(currentNotificationInState, null, 2));
+        // const targetNotification = currentNotificationInState || notification;
 
         // Đánh dấu thông báo là đã đọc nếu nó chưa đọc
-        if (!notification.read_at) {
+        if (!notification.read_at) { // Sử dụng notification trực tiếp từ map
              try {
                 await lecturerApiService.markNotificationAsRead(notification.id);
                 // Cập nhật state cục bộ thay vì fetch lại toàn bộ
@@ -185,15 +209,18 @@ const LecturerHeader = () => {
                 setUnreadCount(prev => Math.max(0, prev - 1));
                 // Không cần toast ở đây, hành động click đã ngầm hiểu là đọc
             } catch (error) {
-                console.error(`Error marking notification ${notification.id} as read on click:`, error);
+                console.error(`LecturerHeader: handleNotificationClick - Error marking notification ${notification.id} as read:`, error.response?.data || error.message);
                 // Nếu API báo lỗi (ví dụ: 404 Not Found), có thể thông báo này thực sự chưa có ở backend
                 // hoặc có vấn đề với ID. Tuy nhiên, vẫn điều hướng để người dùng xem.
                 // Trang chi tiết có thể có logic riêng để xử lý.
+                // Cân nhắc hiển thị một toast lỗi nhẹ nếu cần, nhưng vẫn cho phép điều hướng.
+                // toast.warn("Có lỗi khi đánh dấu đã đọc, nhưng bạn vẫn có thể xem chi tiết.");
             }
         }
 
         // Chuyển hướng đến trang chi tiết thông báo
-        navigate(`/lecturer/notifications/${notification.id}`);
+        // Đảm bảo ID là chuỗi và hợp lệ
+        navigate(`/lecturer/notifications/${String(notification.id)}`);
     };
 
     // Hàm này sẽ được gọi khi click vào nút "Xem tất cả thông báo"
@@ -212,16 +239,17 @@ const LecturerHeader = () => {
             toast.error("Lỗi: Không thể đánh dấu thông báo này đã đọc.");
             return;
         }
+        console.log("LecturerHeader: handleMarkOneAsRead - Marking notification ID:", notificationId);
         try {
             await lecturerApiService.markNotificationAsRead(notificationId);
             // Cập nhật state cục bộ thay vì fetch lại toàn bộ
              setNotifications(prev => prev.map(n =>
-                n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
+                String(n.id) === String(notificationId) ? { ...n, read_at: new Date().toISOString() } : n
             ));
             setUnreadCount(prev => Math.max(0, prev - 1));
             toast.success("Đã đánh dấu thông báo là đã đọc.");
         } catch (error) {
-            console.error(`Error marking notification ${notificationId} as read:`, error);
+            console.error(`LecturerHeader: handleMarkOneAsRead - Error marking notification ${notificationId} as read:`, error.response?.data || error.message);
             toast.error("Lỗi khi đánh dấu đã đọc.");
         }
     };
@@ -237,8 +265,19 @@ const LecturerHeader = () => {
             // toast.success("Đã đánh dấu tất cả thông báo là đã đọc."); // Bỏ toast khi đánh dấu tất cả đã đọc
             setShowDropdown(false);
         } catch (error) {
-            console.error("Error marking all notifications as read:", error);
+            console.error("LecturerHeader: handleMarkAllAsRead - Error marking all notifications as read:", error.response?.data || error.message);
             toast.error("Lỗi khi đánh dấu tất cả đã đọc.");
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout(); // Gọi hàm logout từ useAuth
+            navigate('/login'); // Hoặc trang đăng nhập của giảng viên
+            toast.success("Đăng xuất thành công!");
+        } catch (error) {
+            console.error("Logout failed:", error);
+            toast.error("Đăng xuất thất bại. Vui lòng thử lại.");
         }
     };
 
@@ -277,12 +316,16 @@ const LecturerHeader = () => {
                         <NavDropdown.Divider />
                         {isLoading && <div className="text-center p-2"><Spinner animation="border" size="sm" /> Đang tải...</div>}
                         {!isLoading && notifications.length === 0 && <NavDropdown.ItemText>Không có thông báo mới.</NavDropdown.ItemText>}
-                        {!isLoading && notifications.map(notif => (
-                            <NavDropdown.Item key={notif.id} onClick={() => handleNotificationClick(notif)} className={!notif.read_at ? 'fw-bold unread-notification' : 'read-notification'}>
+                        {!isLoading && notifications.map(notif => {
+                            // Log giá trị của notif và notif.title ngay trước khi render
+                            console.log("LecturerHeader: Rendering notification item - notif:", JSON.stringify(notif, null, 2));
+                            console.log("LecturerHeader: Rendering notification item - notif.title:", notif.title);
+                            return (
+                                <NavDropdown.Item key={notif.id} onClick={() => handleNotificationClick(notif)} className={!notif.read_at ? 'fw-bold unread-notification' : 'read-notification'}>
                                 <div className="d-flex justify-content-between align-items-start">
-                                    <div style={{ maxWidth: '280px', overflow: 'hidden' }}> {/* Giới hạn chiều rộng và ẩn phần tràn */}
-                                        <p className="mb-0 notification-title text-truncate">{notif.data?.title || 'Thông báo không có tiêu đề'}</p>
-                                        <small className="text-muted notification-body">{notif.data?.body?.substring(0, 70) + (notif.data?.body?.length > 70 ? '...' : '')}</small>
+                                    <div style={{ maxWidth: '280px', overflow: 'hidden' }}>
+                                        <p className="mb-0 notification-title text-truncate">{notif.title || 'Thông báo không có tiêu đề'}</p>
+                                        <small className="text-muted notification-body">{notif.body?.substring(0, 70) + (notif.body?.length > 70 ? '...' : '')}</small>
                                         <br/>
                                         <small className="text-muted">{new Date(notif.created_at).toLocaleString()}</small>
                                     </div>
@@ -293,7 +336,8 @@ const LecturerHeader = () => {
                                     )}
                                 </div>
                             </NavDropdown.Item>
-                        ))}
+                            );
+                        })}
                          <NavDropdown.Divider />
                         <NavDropdown.Item onClick={handleViewAllNotifications} className="text-center">
                             Xem tất cả thông báo
@@ -303,8 +347,7 @@ const LecturerHeader = () => {
                     <NavDropdown title={user?.hoTen || "Giảng viên"} id="user-dropdown" align="end">
                         <NavDropdown.Item as={Link} to="/lecturer/profile">Thông tin cá nhân</NavDropdown.Item>
                         <NavDropdown.Divider />
-                        {/* Thay thế onClick này bằng hàm logout thực tế của bạn */}
-                        <NavDropdown.Item onClick={() => { console.log("Logout clicked"); /* Xử lý logout */ }}>Đăng xuất</NavDropdown.Item>
+                        <NavDropdown.Item onClick={handleLogout}>Đăng xuất</NavDropdown.Item>
                     </NavDropdown>
                 </Nav>
             </Navbar.Collapse>

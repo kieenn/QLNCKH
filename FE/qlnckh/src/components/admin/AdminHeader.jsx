@@ -1,9 +1,9 @@
 // src/components/admin/AdminHeader.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Thêm useNavigate
 import { useAuth } from '../../hooks/useAuth';
-import { Navbar, Nav, NavDropdown, Badge } from 'react-bootstrap';
-import { FaBell, FaUserCircle, FaSignOutAlt, FaCogs } from 'react-icons/fa';
+import { Navbar, Nav, NavDropdown } from 'react-bootstrap'; // Bỏ Badge và FaBell
+import { FaUserCircle, FaSignOutAlt, FaCogs } from 'react-icons/fa';
 import { 
     initPusher, 
     subscribeToAdminNotifications, 
@@ -11,13 +11,12 @@ import {
     // disconnectPusher // Bạn có thể import nếu muốn disconnect hoàn toàn khi logout
 } from '../../services/pusherService';
 import { fetchCsrfToken } from '../../api/axiosConfig';
-// import { toast } from 'react-toastify'; // Xóa import toast ở đây
+import { toast } from 'react-toastify'; // Import toast để hiển thị thông báo
 
 const AdminHeader = () => {
     const { user, logout } = useAuth();
-    const [notificationCount, setNotificationCount] = useState(0);
-    const [notifications, setNotifications] = useState([]);
-    
+    const navigate = useNavigate(); // Khởi tạo useNavigate
+
     // Sử dụng useRef để theo dõi trạng thái đã subscribe Pusher hay chưa.
     // useRef không gây re-render khi giá trị thay đổi và giữ nguyên giá trị qua các lần render.
     const pusherSubscribedRef = useRef(false);
@@ -28,14 +27,34 @@ const AdminHeader = () => {
         // với closure đúng cho state hiện tại (setNotifications, setNotificationCount) sẽ được tạo ra.
         const handleNewNotification = (data) => {
             console.log("AdminHeader: handleNewNotification CALLED with data:", data);
-            if (data && data.payload) { // Đảm bảo data và payload tồn tại
-                // Thêm thông báo mới (chứa payload đầy đủ) vào đầu danh sách và giới hạn số lượng hiển thị
-                // Lưu trữ cả eventType và payload để có thể xử lý linh hoạt hơn trong dropdown
-                setNotifications(prev => [{ eventType: data.eventType, payload: data.payload }, ...prev].slice(0, 10)); 
-                setNotificationCount(prevCount => prevCount + 1);
-                // Không hiển thị toast ở đây nữa, AdminNotificationListener sẽ làm việc này
+            if (data && data.payload && data.eventType) {
+                const { payload, eventType } = data;
+                let title = "Thông báo mới"; // Tiêu đề mặc định
+                let body = ""; // Nội dung mặc định
+                let toastOptions = {
+                    autoClose: 8000,
+                    onClick: () => {} // Mặc định không làm gì khi click
+                };
+
+                if (eventType === 'research.topic.submitted' && payload.topic_id) {
+                    // Giả sử payload có trường 'title' hoặc bạn tự tạo title
+                    title = payload.title || "Đề tài mới được gửi"; 
+                    body = `"${payload.topic_name || 'Không có tên'}" từ GV ${payload.lecturer_name || 'Không rõ'}.`;
+                    toastOptions.onClick = () => navigate(`/admin/research-proposals/pending-approval`); // Điều hướng đến trang duyệt đề tài
+                } else if (eventType === 'bai-bao.submitted' && payload.bai_bao_id) {
+                    // Giả sử payload có trường 'title' hoặc bạn tự tạo title
+                    title = payload.title || "Bài báo mới được nộp";
+                    body = `"${payload.article_name || 'Không có tên'}" (ĐT: ${payload.topic_code || 'N/A'}).`;
+                    toastOptions.onClick = () => navigate(`/admin/articles/pending`); // Điều hướng đến trang duyệt bài báo
+                }
+                
+                // Tạo nội dung toast với "tiêu đề" và "nội dung"
+                const toastMessage = (<div><strong>{title}</strong><br/>{body}</div>);
+
+                toast.info(toastMessage, toastOptions);
+
             } else {
-                console.warn("AdminHeader: Received notification without payload:", data);
+                console.warn("AdminHeader: Received notification without payload or eventType:", data);
             }
         };
 
@@ -90,65 +109,12 @@ const AdminHeader = () => {
         };
     }, [user]); // useEffect này chỉ phụ thuộc vào 'user'.
 
-    const handleNotificationClick = (topicId) => {
-        console.log("Navigate to topic:", topicId);
-        // TODO: Implement navigation, e.g., using useNavigate() from react-router-dom
-        // navigate(`/admin/research-topics/${topicId}`);
-        
-        // Xóa thông báo khỏi danh sách hoặc đánh dấu đã đọc
-        // Ví dụ: đánh dấu đã đọc bằng cách không hiển thị lại hoặc thay đổi style
-        setNotifications(prev => prev.filter(n => n.topic_id !== topicId)); // Xóa khỏi list hiển thị
-        setNotificationCount(prev => Math.max(0, prev - 1)); // Giảm count
-    };    
-
     return (
         <Navbar bg="white" expand="lg" className="shadow-sm px-3 topbar static-top" style={{ zIndex: 1030 }}> {/* Ensure header is above toast */}
             {/* Phần search form có thể giữ lại hoặc bỏ đi tùy ý bạn */}
             {/* <Form className="d-none d-sm-inline-block me-auto ms-md-3 my-2 my-md-0 mw-100"> ... </Form> */}
 
             <Nav className="ms-auto align-items-center">
-                <NavDropdown
-                    className="mx-1"
-                    title={
-                        <>
-                            <FaBell />
-                            {notificationCount > 0 && (
-                                <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle p-1" style={{ fontSize: '0.6em' }}>
-                                    {notificationCount > 9 ? '9+' : notificationCount}
-                                    <span className="visually-hidden">unread messages</span>
-                                </Badge>
-                            )}
-                        </>
-                    }
-                    id="alertsDropdown"
-                    align="end"
-                >
-                    {notifications.length === 0 ? (
-                        <NavDropdown.ItemText>Không có thông báo mới</NavDropdown.ItemText>
-                    ) : (
-                        notifications.map((notif, index) => ( // Hiển thị các thông báo đã nhận
-                            // Sử dụng ID duy nhất từ payload nếu có, ví dụ bai_bao_id hoặc topic_id
-                            <NavDropdown.Item 
-                                key={notif.payload?.bai_bao_id || notif.payload?.topic_id || `notif-${index}`} 
-                                onClick={() => handleNotificationClick(notif.payload?.topic_id || notif.payload?.bai_bao_id)}
-                            >
-                                {notif.payload?.submitted_at && (
-                                    <div className="small text-gray-500">{new Date(notif.payload.submitted_at).toLocaleString()}</div>
-                                )}
-                                {/* Hiển thị message chi tiết từ payload */}
-                                <span className="fw-bold">{notif.payload?.message || 'Thông báo không có nội dung.'}</span>
-                                <div className="small text-muted">{notif.eventType === 'bai-bao.submitted' ? 'Bài báo mới' : 'Đề tài mới'}</div>
-                            </NavDropdown.Item>
-                        ))
-                    )}
-                    {notifications.length > 0 && <NavDropdown.Divider />}
-                    {notifications.length > 0 && 
-                        <NavDropdown.Item as={Link} to="/admin/notifications" className="text-center small text-gray-500">
-                            Xem tất cả thông báo
-                        </NavDropdown.Item> /* Giả sử có trang xem tất cả */
-                    }
-                </NavDropdown>
-
                 <div className="topbar-divider d-none d-sm-block mx-2 border-end" style={{height: '30px'}}></div>
 
                 <NavDropdown

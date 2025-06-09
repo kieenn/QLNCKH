@@ -41,3 +41,11 @@ export const submitActualArticleDeclaration = async (researchId, formData) => {
         },
     });
 }
+
+// API để lấy danh sách đề tài sắp đến hạn nộp
+export const getDeadlineReminders = () => apiClient.get('/api/lecturer/deadline-reminders');
+
+// API để lấy chi tiết một thông báo cụ thể
+export const getNotificationDetails = (notificationId) => {
+    return apiClient.get(`/api/notifications/${notificationId}`);
+};

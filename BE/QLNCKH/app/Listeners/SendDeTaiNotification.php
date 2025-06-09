@@ -28,8 +28,8 @@ class SendDeTaiNotification
         $deTai = $event->deTai;
         $admin = $event->admin;
         $isApproved = $event instanceof DeTaiApproved;
-        // Assuming DeTaiRejected event has a public property named $lyDoTuChoi
-        $rejectionReason = $isApproved ? null : ($event->lyDoTuChoi ?? 'Không có lý do cụ thể.');
+        // Access the 'reason' property from DeTaiRejected event
+        $rejectionReason = $isApproved ? null : ($event->reason ?? 'Không có lý do cụ thể.');
 
         // Find all relevant users: the registrant (msvc_gvdk) and all participants (tham_gia)
         // Ensure relationships are loaded if not already

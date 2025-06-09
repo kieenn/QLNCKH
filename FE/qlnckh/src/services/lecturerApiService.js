@@ -26,12 +26,19 @@ export const markAllNotificationsAsRead = () => {
     return apiClient.patch('/api/notifications/mark-all-as-read');
 };
 
+// API để lấy chi tiết một thông báo cụ thể
+export const getNotificationDetails = (notificationId) => {
+    // This function was originally in lecturerApi.js but needs to be part of the
+    // lecturerApiService object if LecturerNotificationDetailPage.jsx imports from here.
+    return apiClient.get(`/api/notifications/${notificationId}`);
+};
+
+
 // Add other lecturer-specific API calls here as needed.
 // For example:
 // export const getLecturerProfile = () => {
 //     return apiClient.get('/lecturer/profile');
 // };
-
 // export const updateLecturerProfile = (data) => {
 //     return apiClient.post('/lecturer/profile', data);
 // };
@@ -44,5 +51,6 @@ const lecturerApiService = {
     getLecturerNotifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
+    getNotificationDetails, // Add the function here
 };
 export default lecturerApiService;

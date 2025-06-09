@@ -76,6 +76,14 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
+            /*
+             * Settings for spatie/laravel-backup
+             * Specify the path to your PostgreSQL binaries.
+             */
+            'dump' => [
+                'dump_binary_path' => 'C:/Program Files/PostgreSQL/17/bin/', // Ensure pg_dump.exe is in this directory
+                // 'restore_binary_path' => 'C:/Program Files/PostgreSQL/17/bin/', // For pg_restore, if needed
+            ],
         ],
 
         'sqlsrv' => [
