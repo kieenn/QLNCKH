@@ -26,26 +26,41 @@ const AdminHeader = () => {
         // Khi useEffect chạy lại (do user thay đổi), một instance mới của handleNewNotification
         // với closure đúng cho state hiện tại (setNotifications, setNotificationCount) sẽ được tạo ra.
         const handleNewNotification = (data) => {
-            console.log("AdminHeader: handleNewNotification CALLED with data:", data);
-            if (data && data.payload && data.eventType) {
+            console.log("AdminHeader: handleNewNotification CALLED with data:", JSON.stringify(data, null, 2)); // Log chi tiết hơn
+            // Kiểm tra kỹ hơn cấu trúc data nhận được
+            if (data && data.payload && typeof data.payload === 'object' && data.eventType) {
                 const { payload, eventType } = data;
                 let title = "Thông báo mới"; // Tiêu đề mặc định
                 let body = ""; // Nội dung mặc định
                 let toastOptions = {
                     autoClose: 8000,
-                    onClick: () => {} // Mặc định không làm gì khi click
+                    onClick: () => { console.log("Toast clicked, no specific navigation."); } // Log khi click nếu không có điều hướng cụ thể
                 };
 
-                if (eventType === 'research.topic.submitted' && payload.topic_id) {
-                    // Giả sử payload có trường 'title' hoặc bạn tự tạo title
-                    title = payload.title || "Đề tài mới được gửi"; 
-                    body = `"${payload.topic_name || 'Không có tên'}" từ GV ${payload.lecturer_name || 'Không rõ'}.`;
-                    toastOptions.onClick = () => navigate(`/admin/research-proposals/pending-approval`); // Điều hướng đến trang duyệt đề tài
-                } else if (eventType === 'bai-bao.submitted' && payload.bai_bao_id) {
-                    // Giả sử payload có trường 'title' hoặc bạn tự tạo title
-                    title = payload.title || "Bài báo mới được nộp";
-                    body = `"${payload.article_name || 'Không có tên'}" (ĐT: ${payload.topic_code || 'N/A'}).`;
-                    toastOptions.onClick = () => navigate(`/admin/articles/pending`); // Điều hướng đến trang duyệt bài báo
+                // Log toàn bộ payload để kiểm tra
+                console.log("AdminHeader: Full payload received:", JSON.stringify(payload, null, 2));
+                // Log cụ thể các trường bạn quan tâm
+                console.log("AdminHeader: Payload details - ten_bai_bao:", payload.ten_bai_bao, "de_tai_ten:", payload.de_tai_ten, "lecturer_name:", payload.lecturer_name);
+
+                if (eventType === 'research.topic.submitted') {
+                    title = payload.title || "Đề tài mới được gửi";
+                    body = `"${payload.topic_name || 'Chưa có tên đề tài'}" bởi GV ${payload.lecturer_name || 'Không rõ tên GV'}.`;
+                    if (payload.topic_id) { // Chỉ điều hướng nếu có topic_id
+                        // Giữ lại điều hướng cho đề tài nếu cần, hoặc bỏ đi nếu muốn thống nhất
+                        toastOptions.onClick = () => navigate(`/admin/approve-topics`); 
+                    }
+                } else if (eventType === 'bai-bao.submitted') {
+                    title = payload.title || "Bài báo mới được nộp"; // Giữ nguyên hoặc lấy từ payload.message nếu có
+                    // Sử dụng payload.ten_bai_bao và payload.de_tai_ten từ log Pusher
+                    body = `"${payload.ten_bai_bao || 'Chưa có tên bài báo'}" cho đề tài "${payload.de_tai_ten || 'Không rõ tên đề tài'}".`;
+                    // Bỏ điều hướng khi click vào toast cho bài báo
+                    // toastOptions.onClick = () => navigate(`/admin/approve-articles`); // Bỏ dòng này
+                } else {
+                    // Xử lý các eventType khác nếu có, hoặc log ra để debug
+                    console.warn("AdminHeader: Unhandled eventType:", eventType, "Payload:", payload);
+                    // Có thể lấy title và body trực tiếp từ payload nếu backend gửi chung chung
+                    title = payload.title || title;
+                    body = payload.body || payload.message || "Nội dung không xác định.";
                 }
                 
                 // Tạo nội dung toast với "tiêu đề" và "nội dung"
@@ -54,7 +69,7 @@ const AdminHeader = () => {
                 toast.info(toastMessage, toastOptions);
 
             } else {
-                console.warn("AdminHeader: Received notification without payload or eventType:", data);
+                console.warn("AdminHeader: Received notification without valid payload object or eventType. Data:", JSON.stringify(data, null, 2));
             }
         };
 
@@ -130,9 +145,9 @@ const AdminHeader = () => {
                     <NavDropdown.Item as={Link} to="/admin/profile">
                         <FaUserCircle className="me-2 text-gray-400" /> Hồ sơ
                     </NavDropdown.Item>
-                    <NavDropdown.Item as={Link} to="/admin/settings">
+                    {/* <NavDropdown.Item as={Link} to="/admin/settings">
                         <FaCogs className="me-2 text-gray-400" /> Cài đặt
-                    </NavDropdown.Item>
+                    </NavDropdown.Item> */}
                     <NavDropdown.Divider />
                     <NavDropdown.Item onClick={logout}>
                         <FaSignOutAlt className="me-2 text-gray-400" /> Đăng xuất

@@ -75,7 +75,7 @@ Route::middleware('web')->group(function () {
         Route::get('/admin/linh-vuc-nghien-cuu', [AdminController::class, 'getAllLinhVucNghienCuu']);
         Route::get('/admin/trang-thai-de-tai', [AdminController::class, 'getAllTrangThaiDeTai']);
         Route::get('/admin/tien-do', [AdminController::class, 'getAllTienDo']);
-        Route::post('/admin/tien-do-de-tai/{deTai:ma_de_tai}/update-progress', [AdminController::class, 'updateTienDoDeTai'])->name('admin.deTai.updateTienDoDeTai');
+        Route::post('/admin/tien-do-de-tai/{deTai}/update-progress', [AdminController::class, 'updateTienDoDeTai'])->name('admin.deTai.updateTienDoDeTai');
 
         Route::get('/linh-vuc', [LecturerController::class, 'getLinhVuc']);
         Route::get('/cap-nhiem-vu', [LecturerController::class, 'getCapNhiemVu']);
@@ -114,6 +114,9 @@ Route::middleware('web')->group(function () {
     Route::patch('/notifications/{notification_id}/read', [App\Http\Controllers\LecturerController::class, 'markNotificationAsRead']);
     Route::patch('/notifications/mark-all-as-read', [App\Http\Controllers\LecturerController::class, 'markAllNotificationsAsRead']);
         Route::get('/notifications/{notification}', [App\Http\Controllers\LecturerController::class, 'showNotification']);
+        // Routes for articles related to a research topic
+        Route::get('/researches/{deTai}/articles', [LecturerController::class, 'getArticlesForResearch']);
+        Route::put('/articles/{baiBao}', [LecturerController::class, 'updateArticle']);
 
     });
 });

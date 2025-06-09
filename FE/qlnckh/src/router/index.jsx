@@ -36,7 +36,7 @@ import ApproveArticlesPage from '../pages/admin/ApproveArticlesPage.jsx';
 // Import các trang thông báo cho giảng viên
 import AllNotificationsPage from '../pages/lecturer/AllNotificationsPage';
 import LecturerNotificationDetailPage from '../pages/lecturer/LecturerNotificationDetailPage';
-
+import ResearchArticlesListPage from '../pages/lecturer/ResearchArticlesListPage';
 
 // --- Định nghĩa mã quyền (phải khớp với DB và backend) ---
 const MANAGE_ACCOUNTS = 'Quản Lý Tài Khoản';
@@ -136,6 +136,7 @@ const AppRouter = () => {
                     {/* Routes cho thông báo của giảng viên */}
                     <Route path="notifications" element={<AllNotificationsPage />} />
                     <Route path="notifications/:notificationId" element={<LecturerNotificationDetailPage />} />
+                     <Route path="researches/:researchId/articles" element={<ResearchArticlesListPage />} />
                 </Route>
             </Route>
 

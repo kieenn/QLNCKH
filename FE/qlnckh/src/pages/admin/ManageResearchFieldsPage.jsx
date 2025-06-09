@@ -290,7 +290,7 @@ const ManageResearchFieldsPage = () => {
                             <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
                         </Button>
                     </div>
-                    <h6 className="m-0 fw-bold text-primary">Danh sách Lĩnh vực nghiên cứu</h6>
+                    {/* <h6 className="m-0 fw-bold text-primary">Danh sách Lĩnh vực nghiên cứu</h6> */}
                     <Button variant="primary" size="sm" onClick={handleAddClick}>
                         <FaPlus className="me-1" /> Thêm Lĩnh vực
                     </Button>

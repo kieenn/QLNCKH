@@ -4,7 +4,7 @@ import usePagination from '../../hooks/usePagination';
 import {
     Container, Card, Table, Button, Spinner, Alert, Pagination, Row, Col, InputGroup, FormControl, Badge, Modal, FormSelect
 } from 'react-bootstrap';
-import { FaPlus, FaEye, FaEdit, FaFilter, FaTasks, FaNewspaper } from 'react-icons/fa'; // Thêm FaNewspaper
+import { FaPlus, FaEye, FaEdit, FaFilter, FaTasks, FaNewspaper, FaBookOpen } from 'react-icons/fa'; // Đổi FaListAlt thành FaBookOpen
 import { getMyResearchList, getAllLinhVuc, getAllTrangThaiDeTaiForLecturer } from '../../api/lecturerApi';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -201,6 +201,17 @@ const MyResearchPage = () => {
                                             onClick={() => navigate(`/lecturer/researches/${r.id}/articles/declare`)}
                                             title="Khai báo bài báo"
                                         ><FaNewspaper /></Button>
+                                    )}
+                                    {/* 
+                                        Chỉ hiển thị nút "Xem bài báo" nếu đề tài đã hoàn thành (ID=5) hoặc đã nghiệm thu (ID=6)
+                                        Bạn cần kiểm tra ID trạng thái chính xác từ DB/API của bạn.
+                                    */}
+                                    {(r.trang_thai?.id === 3) && (
+                                        <Button
+                                            variant="outline-info" // Đổi màu để phân biệt
+                                            size="sm"
+                                            onClick={() => navigate(`/lecturer/researches/${r.id}/articles`)}
+                                            title="Xem bài báo đã khai báo"><FaBookOpen /></Button>
                                     )}
                                 </td>
                             </tr>))}

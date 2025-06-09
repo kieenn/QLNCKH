@@ -797,4 +797,117 @@ class LecturerController extends Controller
     Log::info("LecturerController@showNotification: Successfully fetched and standardized notification {$notification->id}.");
     return response()->json($standardizedNotification);
 }
+
+    /**
+     * Get all articles for a specific research topic.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\DeTai  $deTai
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getArticlesForResearch(Request $request, DeTai $deTai)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Authorization: Check if the lecturer is part of the DeTai team or the registrant
+        $isMemberOrRegistrant = $deTai->msvc_gvdk === $user->msvc ||
+                                $deTai->giangVienThamGia()->where('users.msvc', $user->msvc)->exists();
+
+        if (!$isMemberOrRegistrant) {
+            return response()->json(['message' => 'Bạn không có quyền xem bài báo cho đề tài này.'], 403);
+        }
+
+        // BaiBao.de_tai_id links to DeTai.ma_de_tai
+        $articles = BaiBao::where('de_tai_id', $deTai->ma_de_tai)
+                            ->with('nguoiNop:msvc,ho_ten', 'taiLieu') // Eager load submitter and attachments
+                            ->orderBy('created_at', 'desc')
+                            ->get();
+
+        return response()->json($articles);
+    }
+
+    /**
+     * Update a specific article.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\BaiBao  $baiBao
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateArticle(Request $request, BaiBao $baiBao)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Authorization:
+        // 1. User must be the one who submitted the article.
+        // 2. Article status must be 'chờ duyệt'.
+        if ($baiBao->msvc_nguoi_nop !== $user->msvc) {
+            Log::warning("User {$user->msvc} attempted to update article ID {$baiBao->id} not owned by them.");
+            return response()->json(['message' => 'Bạn không có quyền chỉnh sửa bài báo này.'], 403);
+        }
+
+        if ($baiBao->trang_thai !== 'chờ duyệt') {
+            Log::warning("Attempt to update article ID {$baiBao->id} with status '{$baiBao->trang_thai}' by user {$user->msvc}.");
+            return response()->json(['message' => 'Bài báo này không thể chỉnh sửa ở trạng thái hiện tại.'], 403);
+        }
+
+        $validatedData = $request->validate([
+            'ten_bai_bao' => 'sometimes|required|string|max:255',
+            'ngay_xuat_ban' => 'sometimes|required|date_format:Y-m-d',
+            'mo_ta' => 'nullable|string|max:1000',
+            // Validation for new files and files to delete
+            'new_files' => 'nullable|array',
+            'new_files.*' => 'file|mimes:pdf,doc,docx,zip,rar,jpg,png,xls,xlsx|max:20480', // Max 20MB
+            'new_file_descriptions' => 'nullable|array',
+            'new_file_descriptions.*' => 'nullable|string|max:255',
+            'delete_files' => 'nullable|array',
+            'delete_files.*' => 'integer|exists:tai_lieu,id', // Ensure IDs exist in tai_lieu table
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Update text fields
+            $baiBao->update([
+                'ten_bai_bao' => $validatedData['ten_bai_bao'] ?? $baiBao->ten_bai_bao,
+                'ngay_xuat_ban' => $validatedData['ngay_xuat_ban'] ?? $baiBao->ngay_xuat_ban,
+                'mo_ta' => $validatedData['mo_ta'] ?? $baiBao->mo_ta,
+            ]);
+
+            // Delete marked files
+            if ($request->has('delete_files')) {
+                foreach ($request->input('delete_files') as $fileIdToDelete) {
+                    $taiLieu = TaiLieu::where('id', $fileIdToDelete)->where('bai_bao_id', $baiBao->id)->first();
+                    if ($taiLieu) {
+                        Storage::disk('public')->delete($taiLieu->file_path);
+                        $taiLieu->delete();
+                        Log::info("Deleted file ID {$fileIdToDelete} for article ID {$baiBao->id}. Path: {$taiLieu->file_path}");
+                    }
+                }
+            }
+
+            // Add new files
+            if ($request->hasFile('new_files')) {
+                $newFileDescriptions = $request->input('new_file_descriptions', []);
+                foreach ($request->file('new_files') as $index => $file) {
+                    $filePath = $file->store("bai_bao_attachments/{$baiBao->id}", 'public');
+                    TaiLieu::create([
+                        'bai_bao_id' => $baiBao->id,
+                        'file_path' => $filePath,
+                        'mo_ta' => $newFileDescriptions[$index] ?? $file->getClientOriginalName(),
+                        'msvc_nguoi_upload' => $user->msvc,
+                    ]);
+                    Log::info("Uploaded new file for article ID {$baiBao->id}. Path: {$filePath}");
+                }
+            }
+
+            DB::commit();
+            Log::info("Article ID {$baiBao->id} and its attachments updated successfully by user {$user->msvc}.");
+            return response()->json(['message' => 'Cập nhật bài báo thành công.', 'bai_bao' => $baiBao->fresh()->load('taiLieu')]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error updating article ID {$baiBao->id}: " . $e->getMessage());
+            return response()->json(['message' => 'Lỗi khi cập nhật bài báo.', 'error' => $e->getMessage()], 500);
+        }
+    }
 }

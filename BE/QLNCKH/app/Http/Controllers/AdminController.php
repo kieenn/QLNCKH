@@ -659,7 +659,7 @@ class AdminController extends Controller
             'giangVienThamGia' => function ($query) { 
                 $query->select('users.id', 'users.ho_ten', 'users.msvc') 
                       ->withPivot('vai_tro_id', 'can_edit', 'join_at'); 
-            },
+            }
         ])
         ->where('de_tai.trang_thai_id', '!=', 1);
 
@@ -667,6 +667,7 @@ class AdminController extends Controller
             $keyword = $request->input('search_keyword');
             $query->where(function ($q) use ($keyword) {
                 $q->where('ten_de_tai', 'ILIKE', "%{$keyword}%")
+                  // Thêm điều kiện tìm kiếm theo mã đề tài nếu có
                   ->orWhere('ma_de_tai', 'ILIKE', "%{$keyword}%");
             });
         }
@@ -707,6 +708,9 @@ class AdminController extends Controller
                   });
             });
         }
+        
+        // Thêm điều kiện để loại trừ các đề tài có trang_thai_id = 4
+        $query->where('de_tai.trang_thai_id', '!=', 4);
         
         $detai = $query->paginate($perPage);
 

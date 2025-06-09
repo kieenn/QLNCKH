@@ -49,3 +49,19 @@ export const getDeadlineReminders = () => apiClient.get('/api/lecturer/deadline-
 export const getNotificationDetails = (notificationId) => {
     return apiClient.get(`/api/notifications/${notificationId}`);
 };
+
+// API to get articles for a specific research topic
+export const getArticlesForResearch = (researchId) => { // researchId is DeTai's ID
+    return apiClient.get(`/api/researches/${researchId}/articles`);
+};
+
+// API to update a lecturer's article
+export const updateLecturerArticle = (articleId, data) => { // articleId is BaiBao's ID
+    // Axios automatically sets Content-Type to multipart/form-data when data is FormData.
+    // No need to manually set headers if data is FormData.
+    // If data might NOT be FormData (e.g., only text fields updated without file changes),
+    // you might need more complex logic or ensure data is always FormData.
+    // For simplicity, assuming `data` will be FormData if files are involved.
+    // The backend controller is now expecting FormData if files are part of the update.
+    return apiClient.put(`/api/articles/${articleId}`, data);
+};

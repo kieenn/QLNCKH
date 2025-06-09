@@ -33,7 +33,8 @@ const truncateStyle = {
 
 const ArticleDetailsModal = ({ show, onHide, article, onAction }) => {
     if (!article) return null;
-    const API_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+    // Sử dụng REACT_APP_API_URL để thống nhất
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000'; 
 
     const getFileName = (filePath) => {
         if (!filePath) return 'file';

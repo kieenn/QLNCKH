@@ -72,4 +72,8 @@ class BaiBao extends Model
     {
         return $this->hasMany(TaiLieu::class, 'bai_bao_id', 'id'); // Giả sử khóa chính của bai_bao là 'id'
     }
+    public function baiBaos()
+{
+    return $this->hasMany(\App\Models\BaiBao::class, 'de_tai_id', 'ma_de_tai');
+}
 }

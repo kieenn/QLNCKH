@@ -421,7 +421,7 @@ const ManageTaskLevelsPage = () => {
                             <FaSyncAlt className={isLoading ? 'fa-spin' : ''} />
                         </Button>
                     </div>
-                    <h6 className="m-0 fw-bold text-primary">Danh sách Cấp nhiệm vụ</h6>
+                    {/* <h6 className="m-0 fw-bold text-primary">Danh sách Cấp nhiệm vụ</h6> */}
                     <Button variant="primary" size="sm" onClick={handleAddClick}>
                         <FaPlus className="me-1" /> Thêm Cấp nhiệm vụ
                     </Button>
