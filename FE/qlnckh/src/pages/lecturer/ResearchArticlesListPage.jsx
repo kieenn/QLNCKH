@@ -28,7 +28,8 @@ const formatFileSize = (bytes) => {
 };
 
 const getFileUrl = (filePath) => {
-    return filePath ? `${process.env.REACT_APP_API_URL}/storage/${filePath}` : '#';
+    // Sử dụng REACT_APP_API_BASE_URL từ file .env
+    return filePath ? `${process.env.REACT_APP_API_BASE_URL}/storage/${filePath}` : '#';
 };
 
 const ResearchArticlesListPage = () => {
