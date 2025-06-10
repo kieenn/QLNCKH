@@ -852,6 +852,13 @@ class LecturerController extends Controller
             return response()->json(['message' => 'Bài báo này không thể chỉnh sửa ở trạng thái hiện tại.'], 403);
         }
 
+        Log::info("================== UpdateArticle - START ==================");
+        // Log specific fields from the request directly
+        Log::info("UpdateArticle - Starting update for Article ID {$baiBao->id} by User MSVC {$user->msvc}.");
+        Log::info("UpdateArticle - Request input ten_bai_bao: " . $request->input('ten_bai_bao'));
+        Log::info("UpdateArticle - Request input ngay_xuat_ban: " . $request->input('ngay_xuat_ban'));
+        Log::info("UpdateArticle - Request input mo_ta: " . $request->input('mo_ta'));
+
         $validatedData = $request->validate([
             'ten_bai_bao' => 'sometimes|required|string|max:255',
             'ngay_xuat_ban' => 'sometimes|required|date_format:Y-m-d',
@@ -864,50 +871,128 @@ class LecturerController extends Controller
             'delete_files' => 'nullable|array',
             'delete_files.*' => 'integer|exists:tai_lieu,id', // Ensure IDs exist in tai_lieu table
         ]);
+        Log::info("UpdateArticle - Validated Data:", $validatedData);
 
         DB::beginTransaction();
         try {
             // Update text fields
-            $baiBao->update([
+            $updateData = [
                 'ten_bai_bao' => $validatedData['ten_bai_bao'] ?? $baiBao->ten_bai_bao,
                 'ngay_xuat_ban' => $validatedData['ngay_xuat_ban'] ?? $baiBao->ngay_xuat_ban,
                 'mo_ta' => $validatedData['mo_ta'] ?? $baiBao->mo_ta,
-            ]);
+            ];
+            Log::info("UpdateArticle - BaiBao state BEFORE update:", $baiBao->toArray());
+            Log::info("UpdateArticle - Payload for BaiBao model update:", $updateData);
+
+            // Explicitly set attributes to allow checking dirty state
+            $baiBao->ten_bai_bao = $updateData['ten_bai_bao'];
+            $baiBao->ngay_xuat_ban = $updateData['ngay_xuat_ban']; // Eloquent will cast this to Carbon
+            $baiBao->mo_ta = $updateData['mo_ta'];
+
+            $isTextChanged = $baiBao->isDirty(['ten_bai_bao', 'ngay_xuat_ban', 'mo_ta']);
+            Log::info("UpdateArticle - Is text content dirty? " . ($isTextChanged ? 'YES' : 'NO'));
+            if ($isTextChanged) {
+                Log::info("UpdateArticle - Dirty text attributes:", $baiBao->getDirty(['ten_bai_bao', 'ngay_xuat_ban', 'mo_ta']));
+            }
+
+            $saveResult = false;
+            if ($baiBao->isDirty()) { // Check if any attribute is dirty (including text or potentially timestamps if enabled)
+                $saveResult = $baiBao->save();
+                Log::info("UpdateArticle - Result of \$baiBao->save() call: " . ($saveResult ? 'true' : 'false'));
+            } else {
+                Log::info("UpdateArticle - Model was not dirty, no save() call made for text fields.");
+            }
 
             // Delete marked files
-            if ($request->has('delete_files')) {
+            if ($request->has('delete_files') && !empty($validatedData['delete_files'])) {
+                Log::info("UpdateArticle - Files to delete IDs:", $validatedData['delete_files']);
                 foreach ($request->input('delete_files') as $fileIdToDelete) {
+                    Log::info("UpdateArticle - Processing deletion for TaiLieu ID: {$fileIdToDelete}");
                     $taiLieu = TaiLieu::where('id', $fileIdToDelete)->where('bai_bao_id', $baiBao->id)->first();
                     if ($taiLieu) {
-                        Storage::disk('public')->delete($taiLieu->file_path);
-                        $taiLieu->delete();
-                        Log::info("Deleted file ID {$fileIdToDelete} for article ID {$baiBao->id}. Path: {$taiLieu->file_path}");
+                        $filePathToDelete = $taiLieu->file_path;
+                        $storageDeleted = Storage::disk('public')->delete($filePathToDelete);
+                        $dbRecordDeleted = $taiLieu->delete();
+                        Log::info("UpdateArticle - Deleting TaiLieu ID {$fileIdToDelete}, Path: {$filePathToDelete}. Storage delete: " . ($storageDeleted ? 'OK' : 'FAIL') . ". DB delete: " . ($dbRecordDeleted ? 'OK' : 'FAIL'));
+                    } else {
+                        Log::warning("UpdateArticle - TaiLieu ID {$fileIdToDelete} for deletion not found or not associated with article {$baiBao->id}.");
                     }
                 }
+            } else {
+                Log::info("UpdateArticle - No 'delete_files' input found or it's empty.");
             }
 
             // Add new files
             if ($request->hasFile('new_files')) {
                 $newFileDescriptions = $request->input('new_file_descriptions', []);
+                Log::info("UpdateArticle - Found new files in request. Count: " . count($request->file('new_files')));
+                Log::info("UpdateArticle - Processing new files. Count: " . count($request->file('new_files')));
                 foreach ($request->file('new_files') as $index => $file) {
-                    $filePath = $file->store("bai_bao_attachments/{$baiBao->id}", 'public');
-                    TaiLieu::create([
-                        'bai_bao_id' => $baiBao->id,
-                        'file_path' => $filePath,
-                        'mo_ta' => $newFileDescriptions[$index] ?? $file->getClientOriginalName(),
-                        'msvc_nguoi_upload' => $user->msvc,
-                    ]);
-                    Log::info("Uploaded new file for article ID {$baiBao->id}. Path: {$filePath}");
+                    if ($file->isValid()) {
+                        $originalName = $file->getClientOriginalName();
+                        $filePath = $file->store("bai_bao_attachments/{$baiBao->id}", 'public');
+                        $newTaiLieu = TaiLieu::create([
+                            'bai_bao_id' => $baiBao->id,
+                            'file_path' => $filePath,
+                            'mo_ta' => $newFileDescriptions[$index] ?? $originalName,
+                            'msvc_nguoi_upload' => $user->msvc,
+                        ]);
+                        Log::info("UpdateArticle - Stored new file '{$originalName}' to '{$filePath}'. TaiLieu ID: {$newTaiLieu->id}");
+                    } else {
+                        Log::error("UpdateArticle - Invalid file at index {$index}. Error: " . $file->getErrorMessage());
+                    }
                 }
+            } else {
+                Log::info("UpdateArticle - No 'new_files' found in request.");
             }
 
             DB::commit();
-            Log::info("Article ID {$baiBao->id} and its attachments updated successfully by user {$user->msvc}.");
-            return response()->json(['message' => 'Cập nhật bài báo thành công.', 'bai_bao' => $baiBao->fresh()->load('taiLieu')]);
+            Log::info("UpdateArticle - Transaction committed for Article ID {$baiBao->id}.");
+            // It's crucial to get a fresh instance from DB to confirm persistence
+            $freshBaiBao = BaiBao::with('taiLieu', 'nguoiNop:msvc,ho_ten')->find($baiBao->id);
+            Log::info("UpdateArticle - Returning fresh BaiBao data:", $freshBaiBao->toArray());
+            Log::info("================== UpdateArticle - END SUCCESS ==================");
+            return response()->json(['message' => 'Cập nhật bài báo thành công.', 'bai_bao' => $freshBaiBao]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("Error updating article ID {$baiBao->id}: " . $e->getMessage());
+            Log::error("UpdateArticle - ERROR for Article ID {$baiBao->id}: " . $e->getMessage() . " at " . $e->getFile() . ":" . $e->getLine() . " Trace: " . $e->getTraceAsString());
+            Log::info("================== UpdateArticle - END ERROR ==================");
             return response()->json(['message' => 'Lỗi khi cập nhật bài báo.', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Get details of a specific article.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\BaiBao  $baiBao  (Route model binding)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getArticleDetail(Request $request, BaiBao $baiBao)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        // Authorization: Check if the user can view this article
+        // User must be the submitter or part of the research team associated with this article's research topic
+        $deTai = $baiBao->deTai()->first(); // Get the related DeTai model
+
+        $isSubmitter = $baiBao->msvc_nguoi_nop === $user->msvc;
+        $isTeamMember = false;
+        if ($deTai) {
+            $isTeamMember = $deTai->msvc_gvdk === $user->msvc ||
+                            $deTai->giangVienThamGia()->where('users.msvc', $user->msvc)->exists();
+        }
+
+        if (!$isSubmitter && !$isTeamMember) {
+            Log::warning("User {$user->msvc} attempted to access details of article ID {$baiBao->id} without permission.");
+            return response()->json(['message' => 'Bạn không có quyền xem chi tiết bài báo này.'], 403);
+        }
+
+        // Load necessary relationships
+        $baiBao->load('nguoiNop:msvc,ho_ten', 'taiLieu', 'deTai:ma_de_tai,ten_de_tai');
+
+        Log::info("User {$user->msvc} fetched details for article ID {$baiBao->id}.");
+        return response()->json($baiBao);
     }
 }

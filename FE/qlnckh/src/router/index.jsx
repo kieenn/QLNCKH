@@ -136,6 +136,8 @@ const AppRouter = () => {
                     {/* Routes cho thông báo của giảng viên */}
                     <Route path="notifications" element={<AllNotificationsPage />} />
                     <Route path="notifications/:notificationId" element={<LecturerNotificationDetailPage />} />
+                    {/* Route for editing an article */}
+                    <Route path="research/:researchId/article/:articleId/edit" element={<DeclareArticlePage />} />
                      <Route path="researches/:researchId/articles" element={<ResearchArticlesListPage />} />
                 </Route>
             </Route>

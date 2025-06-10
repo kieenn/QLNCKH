@@ -57,11 +57,17 @@ export const getArticlesForResearch = (researchId) => { // researchId is DeTai's
 
 // API to update a lecturer's article
 export const updateLecturerArticle = (articleId, data) => { // articleId is BaiBao's ID
-    // Axios automatically sets Content-Type to multipart/form-data when data is FormData.
-    // No need to manually set headers if data is FormData.
-    // If data might NOT be FormData (e.g., only text fields updated without file changes),
-    // you might need more complex logic or ensure data is always FormData.
-    // For simplicity, assuming `data` will be FormData if files are involved.
-    // The backend controller is now expecting FormData if files are part of the update.
-    return apiClient.put(`/api/articles/${articleId}`, data);
+    // `data` đã là một instance của FormData từ DeclareArticlePage.jsx
+    // Add _method: 'PUT' for Laravel to treat POST as PUT when using FormData
+    //data.append('_method', 'PUT');
+    return apiClient.post(`/api/articles/${articleId}`, data, { // Changed to POST
+        headers: {
+            'Content-Type': 'multipart/form-data', // Keep this for FormData
+        },
+    });
+};
+
+// API to get details of a specific article
+export const getArticleDetail = (articleId) => {
+    return apiClient.get(`/api/articles/${articleId}`);
 };

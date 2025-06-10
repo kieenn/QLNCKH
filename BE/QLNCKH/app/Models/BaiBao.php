@@ -27,15 +27,21 @@ class BaiBao extends Model
         'nhan_xet',       // Nhận xét của admin
         // Thêm các trường khác nếu có
     ];
-        // Disable the updated_at timestamp
-    const UPDATED_AT = null;
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = false; // Add this line to disable automatic timestamps
+
     /**
      * Các trường nên được cast sang kiểu dữ liệu gốc.
      *
      * @var array
      */
     protected $casts = [
-        'ngay_xuat_ban' => 'date',
+        // 'ngay_xuat_ban' => 'date', // Temporarily comment out for testing
     ];
 
     /**

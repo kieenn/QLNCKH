@@ -114,9 +114,11 @@ Route::middleware('web')->group(function () {
     Route::patch('/notifications/{notification_id}/read', [App\Http\Controllers\LecturerController::class, 'markNotificationAsRead']);
     Route::patch('/notifications/mark-all-as-read', [App\Http\Controllers\LecturerController::class, 'markAllNotificationsAsRead']);
         Route::get('/notifications/{notification}', [App\Http\Controllers\LecturerController::class, 'showNotification']);
-        // Routes for articles related to a research topic
+        // Routes for articles - Ensure the update route is POST
         Route::get('/researches/{deTai}/articles', [LecturerController::class, 'getArticlesForResearch']);
-        Route::put('/articles/{baiBao}', [LecturerController::class, 'updateArticle']);
+        Route::post('/articles/{baiBao}', [LecturerController::class, 'updateArticle']); // Changed to POST
+        // New route to get specific article details
+        Route::get('/articles/{baiBao}', [LecturerController::class, 'getArticleDetail'])->name('lecturer.articles.detail');
 
     });
 });
