@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
     const navigate = useNavigate();
 
     // Hàm kiểm tra trạng thái đăng nhập (quan trọng)
-    const checkAuthStatus = useCallback(async () => {
+    const checkAuthStatus = useCallback(async () => { // Dependencies được cập nhật
         const storedLoginType = localStorage.getItem('loginType');
         console.log("AuthContext: Checking authentication status...");
         try {
@@ -82,16 +82,17 @@ export const AuthProvider = ({ children }) => {
                 setIsLoading(false);
             }
         }
-    }, [isLoading]); // Phụ thuộc vào isLoading để chỉ chạy một lần logic set isLoading = false
+    }, []); // isLoading được đọc bên trong, không cần là dependency để định nghĩa hàm
 
     useEffect(() => {
         checkAuthStatus();
-    }, []); // Chỉ chạy 1 lần khi mount
+    }, [checkAuthStatus]); // Chạy khi checkAuthStatus (đã memoized) thay đổi (chỉ 1 lần)
 
     // Hàm đăng nhập
-    const login = async (credentials, loginType) => {
+    const login = useCallback(async (credentials, loginType) => {
         console.log(`AuthContext: Attempting login for type: ${loginType}`);
         setIsLoading(true);
+        console.log("AuthContext: Clearing previous error before login attempt.");
         setError(null);
         try {
             await fetchCsrfToken();
@@ -124,13 +125,16 @@ export const AuthProvider = ({ children }) => {
                 await checkAuthStatus();
             } else {
                 setError("Đăng nhập thành công nhưng không nhận được dữ liệu người dùng.");
+                console.log("AuthContext: Login API success but no user data. Error set.");
                 setIsAuthenticated(false);
             }
 
         } catch (err) {
-            console.error("AuthContext: Login failed", err.response);
+            console.error("AuthContext: Login API call failed. Raw error:", err);
+            console.log("AuthContext: Error response from API:", err.response);
             const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Sai tài khoản hoặc mật khẩu.';
             setError(errorMessage);
+            console.log(`AuthContext: setError called with message: "${errorMessage}"`);
             setUser(null);
             setEffectiveRoles([]);
             setCurrentLoginType(null); localStorage.removeItem('loginType');
@@ -138,11 +142,12 @@ export const AuthProvider = ({ children }) => {
             setIsAuthenticated(false);
         } finally {
             setIsLoading(false);
+            console.log("AuthContext: Login function finally block. isLoading set to false.");
         }
-    };
+    }, [checkAuthStatus]); // Phụ thuộc vào checkAuthStatus
 
     // Hàm đăng xuất
-    const logout = async () => {
+    const logout = useCallback(async () => {
         console.log("AuthContext: Logging out...");
         setIsLoading(true);
         setError(null);
@@ -163,7 +168,7 @@ export const AuthProvider = ({ children }) => {
             console.log("AuthContext: Cleared frontend auth state.");
             navigate('/login', { replace: true });
         }
-    };
+    }, [navigate]); // Phụ thuộc vào navigate
 
     // Hàm kiểm tra quyền (quan trọng)
     const hasPermission = useCallback((permissionCode) => {
@@ -176,7 +181,10 @@ export const AuthProvider = ({ children }) => {
         return permissions.includes(permissionCode);
     }, [user, permissions]); // Phụ thuộc user (để check is_superadmin) và mảng permissions
 
-    const clearError = () => { setError(null); };
+    const clearError = useCallback(() => {
+        setError(null);
+        console.log("AuthContext: clearError called. Error set to null.");
+    }, []); // Không có dependencies, hàm này sẽ ổn định
 
     // Cung cấp giá trị context
     const value = {
@@ -194,6 +202,7 @@ export const AuthProvider = ({ children }) => {
         clearError
     };
 
+    console.log("AuthContext: Provider rendering. Current error state:", error, "isLoading:", isLoading, "isAuthenticated:", isAuthenticated);
     return (
         <AuthContext.Provider value={value}>
             {children}

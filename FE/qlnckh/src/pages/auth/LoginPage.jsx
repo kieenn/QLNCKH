@@ -1,25 +1,23 @@
 // c:\Users\maing\OneDrive\Documents\GitHub\QLNCKH\FE\qlnckh\src\pages\auth\LoginPage.jsx
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth'; // !! Đảm bảo đường dẫn đúng
-// Thêm Modal, Form, Button, Spinner, Alert, InputGroup từ react-bootstrap
+import { useAuth } from '../../hooks/useAuth';
 import { Modal, Form, Button, Spinner, Alert, InputGroup } from 'react-bootstrap';
-// Import các hàm API mới từ auth.js
 import { requestPasswordReset, verifyOtp, updatePasswordAfterOtp } from '../../api/auth.js';
-// Import icons
 import { Eye, EyeSlash } from 'react-bootstrap-icons';
 
 function LoginPage() {
     const [msvc, setMsvc] = useState('');
     const [password, setPassword] = useState('');
-    const [loginType, setLoginType] = useState('lecturer'); // Default 'lecturer'
-    const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false); // State cho modal
-    const { login, isLoading, error, isAuthenticated, effectiveRoles, clearError } = useAuth(); // Sử dụng effectiveRoles
-    const [showMainPassword, setShowMainPassword] = useState(false); // State để hiển thị/ẩn mật khẩu trên form chính
+    const [loginType, setLoginType] = useState('lecturer');
+    const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+    const { login, isLoading, error, isAuthenticated, effectiveRoles, clearError } = useAuth();
+    const [showMainPassword, setShowMainPassword] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Redirect nếu đã đăng nhập
+    // Redirect nếu đã đăng nhập (Giữ nguyên, logic này đã đúng)
     useEffect(() => {
         if (isAuthenticated) {
             const destination = effectiveRoles.includes('admin') ? '/admin' : '/lecturer/my-researches';
@@ -29,13 +27,25 @@ function LoginPage() {
         }
     }, [isAuthenticated, navigate, location.state, effectiveRoles]);
 
-    // Xóa lỗi khi thay đổi role hoặc component unmount
+    // =================================================================
+    // ======= PHẦN SỬA ĐỔI QUAN TRỌNG ĐỂ FIX LỖI HIỂN THỊ ========
+    // =================================================================
+    const prevLoginTypeRef = useRef(loginType);
+
+    // Effect to clear error when loginType actually changes by user interaction
     useEffect(() => {
-        clearError();
-        return () => {
+        if (prevLoginTypeRef.current !== loginType) {
+            console.log(`LoginPage: loginType changed from ${prevLoginTypeRef.current} to ${loginType}. Clearing error.`);
             clearError();
-        };
-    }, [loginType, clearError]);
+        }
+        prevLoginTypeRef.current = loginType; // Update ref for next render
+    }, [loginType, clearError]); // Depends on loginType and stable clearError
+
+    // The useEffect hook that previously cleared errors on component unmount has been removed.
+    // This is to prevent React's Strict Mode (in development) from clearing the login error
+    // prematurely during its mount/unmount/remount cycle for testing effect cleanup.
+    // The error state in AuthContext will now persist until it's cleared by a change in loginType
+    // on this page, a new login attempt (which clears previous errors), or a logout.
 
 
     const handleSubmit = async (event) => {
@@ -44,17 +54,17 @@ function LoginPage() {
         await login({ msvc, password }, loginType);
     };
 
-    // --- Forgot Password Modal Component (Multi-step) ---
+    // --- Forgot Password Modal Component (Giữ nguyên, logic đã tốt) ---
     const ForgotPasswordModal = ({ show, handleClose }) => {
         const [step, setStep] = useState('email');
         const [email, setEmail] = useState('');
         const [otp, setOtp] = useState('');
-        const [newPassword, setNewPassword] = useState(''); // Đổi tên state để tránh nhầm lẫn với password của form chính
+        const [newPassword, setNewPassword] = useState('');
         const [passwordConfirmation, setPasswordConfirmation] = useState('');
         const [isProcessing, setIsProcessing] = useState(false);
         const [modalError, setModalError] = useState(null);
         const [modalSuccess, setModalSuccess] = useState(null);
-        const [showNewPasswordModal, setShowNewPasswordModal] = useState(false); // Đổi tên state
+        const [showNewPasswordModal, setShowNewPasswordModal] = useState(false);
 
         useEffect(() => {
             if (!show) {
@@ -289,7 +299,7 @@ function LoginPage() {
                                                     <InputGroup>
                                                         <Form.Control
                                                             type={showMainPassword ? "text" : "password"}
-                                                            className="form-control-user" // Bỏ form-control vì InputGroup đã xử lý
+                                                            className="form-control-user"
                                                             id="password"
                                                             name="password"
                                                             placeholder="Nhập mật khẩu"
